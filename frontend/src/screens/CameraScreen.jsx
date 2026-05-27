@@ -1,187 +1,193 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useApp } from '../context/AppContext.jsx'
 
-const TOTAL_PHOTOS = 4
-const COUNTDOWN_START = 3
+const TOTAL = 4
+const COUNTDOWN = 3
 
 export default function CameraScreen() {
   const navigate = useNavigate()
+  const { config } = useApp()
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
 
   const [photos, setPhotos] = useState([])
   const [countdown, setCountdown] = useState(null)
-  const [phase, setPhase] = useState('ready') // ready | countdown | flash | done
+  const [phase, setPhase] = useState('init') // init | ready | countdown | flash | done | error
+  const [errorMsg, setErrorMsg] = useState('')
 
-  // Camera opstarten
   useEffect(() => {
-    async function startCamera() {
+    let cancelled = false
+    async function start() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } },
           audio: false,
         })
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
         streamRef.current = stream
         if (videoRef.current) videoRef.current.srcObject = stream
+        setPhase('ready')
       } catch (err) {
-        console.error('Camera toegang geweigerd:', err)
+        if (!cancelled) {
+          setErrorMsg('Camera toegang geweigerd. Controleer de instellingen.')
+          setPhase('error')
+        }
       }
     }
-    startCamera()
-    return () => streamRef.current?.getTracks().forEach(t => t.stop())
+    start()
+    return () => {
+      cancelled = true
+      streamRef.current?.getTracks().forEach(t => t.stop())
+    }
   }, [])
 
-  // Start de sessie automatisch
+  // Auto-start after camera ready
   useEffect(() => {
-    if (phase === 'ready') {
-      const t = setTimeout(() => startCountdown(), 1500)
-      return () => clearTimeout(t)
-    }
+    if (phase !== 'ready') return
+    const t = setTimeout(() => { setPhase('countdown'); setCountdown(COUNTDOWN) }, 1200)
+    return () => clearTimeout(t)
   }, [phase])
 
-  // Sla foto's op in sessionStorage en ga naar preview
-  useEffect(() => {
-    if (photos.length === TOTAL_PHOTOS) {
-      sessionStorage.setItem('photos', JSON.stringify(photos))
-      setTimeout(() => navigate('/preview'), 800)
-    }
-  }, [photos])
-
-  function startCountdown() {
-    setPhase('countdown')
-    setCountdown(COUNTDOWN_START)
-  }
-
+  // Countdown tick
   useEffect(() => {
     if (phase !== 'countdown') return
-    if (countdown === 0) {
-      takePhoto()
-      return
-    }
+    if (countdown === 0) { takePhoto(); return }
     const t = setTimeout(() => setCountdown(c => c - 1), 1000)
     return () => clearTimeout(t)
   }, [countdown, phase])
 
+  // Navigate after all photos
+  useEffect(() => {
+    if (photos.length !== TOTAL) return
+    sessionStorage.setItem('photos', JSON.stringify(photos))
+    const t = setTimeout(() => navigate(config.showFilters ? '/filter' : '/preview'), 600)
+    return () => clearTimeout(t)
+  }, [photos])
+
   function takePhoto() {
-    setPhase('flash')
     const video = videoRef.current
     const canvas = canvasRef.current
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
+    if (!video || !canvas) return
+    setPhase('flash')
+    canvas.width = video.videoWidth || 1280
+    canvas.height = video.videoHeight || 960
     canvas.getContext('2d').drawImage(video, 0, 0)
     const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
-
     setPhotos(prev => {
       const next = [...prev, dataUrl]
       setTimeout(() => {
-        if (next.length < TOTAL_PHOTOS) {
-          setPhase('countdown')
-          setCountdown(COUNTDOWN_START)
-        } else {
-          setPhase('done')
-        }
-      }, 600)
+        if (next.length < TOTAL) { setPhase('countdown'); setCountdown(COUNTDOWN) }
+        else setPhase('done')
+      }, 500)
       return next
     })
   }
 
-  return (
-    <div style={styles.container}>
-      {/* Live camera beeld */}
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        style={styles.video}
-      />
+  const accent = config.accentColor || '#e63946'
 
-      {/* Flits overlay */}
-      {phase === 'flash' && <div style={styles.flash} />}
+  if (phase === 'error') {
+    return (
+      <div style={{ ...s.container, gap: 24 }}>
+        <div style={{ fontSize: 64 }}>📷</div>
+        <p style={{ fontSize: 20, color: 'var(--text2)', textAlign: 'center', maxWidth: 320 }}>{errorMsg}</p>
+        <button style={{ ...s.btn, background: accent }} onClick={() => navigate('/')}>Terug</button>
+      </div>
+    )
+  }
+
+  return (
+    <div style={s.container}>
+      <video ref={videoRef} autoPlay playsInline muted style={s.video} />
+
+      {/* Flash */}
+      {phase === 'flash' && <div style={s.flash} />}
 
       {/* Countdown */}
       {phase === 'countdown' && countdown > 0 && (
-        <div style={styles.countdown}>{countdown}</div>
+        <div style={{ ...s.countdown, animation: 'pulse 0.6s ease' }}>{countdown}</div>
       )}
 
-      {/* Voortgang: thumbnails onderin */}
-      <div style={styles.thumbnails}>
-        {Array.from({ length: TOTAL_PHOTOS }).map((_, i) => (
-          <div key={i} style={styles.thumb}>
+      {/* Progress bar */}
+      <div style={s.progressBar}>
+        <div style={{ ...s.progressFill, width: `${(photos.length / TOTAL) * 100}%`, background: accent }} />
+      </div>
+
+      {/* Thumbnails */}
+      <div style={s.thumbnails}>
+        {Array.from({ length: TOTAL }).map((_, i) => (
+          <div key={i} style={{
+            ...s.thumb,
+            borderColor: i < photos.length ? accent : 'rgba(255,255,255,0.15)',
+          }}>
             {photos[i]
-              ? <img src={photos[i]} alt="" style={styles.thumbImg} />
-              : <div style={styles.thumbEmpty}>{i + 1}</div>
+              ? <img src={photos[i]} alt="" style={s.thumbImg} />
+              : <span style={s.thumbNum}>{i + 1}</span>
             }
           </div>
         ))}
       </div>
 
-      {/* Verborgen canvas voor opname */}
       <canvas ref={canvasRef} style={{ display: 'none' }} />
     </div>
   )
 }
 
-const styles = {
+const s = {
   container: {
-    width: '100%',
-    height: '100%',
+    width: '100%', height: '100%',
     background: '#000',
     position: 'relative',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
+    display: 'flex', flexDirection: 'column',
+    alignItems: 'center', justifyContent: 'center',
   },
   video: {
-    width: '100%',
-    height: '100%',
+    position: 'absolute', inset: 0,
+    width: '100%', height: '100%',
     objectFit: 'cover',
-    transform: 'scaleX(-1)', // spiegel
+    transform: 'scaleX(-1)',
   },
   flash: {
-    position: 'absolute',
-    inset: 0,
+    position: 'absolute', inset: 0,
     background: '#fff',
-    animation: 'none',
-    opacity: 0.9,
+    animation: 'flash 0.5s ease forwards',
     pointerEvents: 'none',
+    zIndex: 10,
   },
   countdown: {
     position: 'absolute',
-    fontSize: '160px',
-    fontWeight: '700',
+    fontSize: 180, fontWeight: 800,
     color: '#fff',
-    textShadow: '0 0 40px rgba(0,0,0,0.8)',
+    textShadow: '0 4px 40px rgba(0,0,0,0.9)',
     pointerEvents: 'none',
+    zIndex: 5,
+    lineHeight: 1,
+  },
+  progressBar: {
+    position: 'absolute', top: 0, left: 0, right: 0,
+    height: 4, background: 'rgba(255,255,255,0.1)',
+    zIndex: 10,
+  },
+  progressFill: {
+    height: '100%',
+    transition: 'width 400ms ease',
   },
   thumbnails: {
-    position: 'absolute',
-    bottom: '24px',
-    display: 'flex',
-    gap: '12px',
+    position: 'absolute', bottom: 28,
+    display: 'flex', gap: 10, zIndex: 10,
   },
   thumb: {
-    width: '64px',
-    height: '48px',
-    borderRadius: '6px',
-    overflow: 'hidden',
-    border: '2px solid rgba(255,255,255,0.3)',
-  },
-  thumbImg: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-  },
-  thumbEmpty: {
-    width: '100%',
-    height: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#555',
-    fontSize: '18px',
+    width: 64, height: 48, borderRadius: 8,
+    overflow: 'hidden', border: '2px solid',
     background: '#111',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    transition: 'border-color 300ms',
+  },
+  thumbImg: { width: '100%', height: '100%', objectFit: 'cover' },
+  thumbNum: { color: '#555', fontSize: 16, fontWeight: 600 },
+  btn: {
+    padding: '18px 48px', borderRadius: 'var(--radius)',
+    fontSize: 18, fontWeight: 700, color: '#fff',
   },
 }

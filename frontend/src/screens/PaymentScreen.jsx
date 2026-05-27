@@ -1,156 +1,151 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-
-// Vul hier je SumUp affiliate key in (dashboard.sumup.com → Developers)
-const SUMUP_AFFILIATE_KEY = 'JOUW_AFFILIATE_KEY_HIER'
-const PRICE = 3.00
-const CURRENCY = 'EUR'
+import { useApp } from '../context/AppContext.jsx'
 
 export default function PaymentScreen() {
   const navigate = useNavigate()
+  const { config } = useApp()
   const [searchParams] = useSearchParams()
-  const [status, setStatus] = useState('waiting') // waiting | opening | success | fail
+  const [status, setStatus] = useState('idle') // idle | opening | success | fail
 
-  // Terugkeer van SumUp app via callback URL
+  const accent = config.accentColor || '#e63946'
+
   useEffect(() => {
     const result = searchParams.get('payment')
     if (result === 'success') {
+      sessionStorage.setItem('paid', '1')
       setStatus('success')
-      setTimeout(() => navigate('/done'), 1500)
+      setTimeout(() => navigate('/done'), 1200)
     } else if (result === 'fail') {
       setStatus('fail')
     }
   }, [searchParams])
 
   function openSumUp() {
+    if (!config.sumupKey) {
+      // Dev mode: skip payment
+      sessionStorage.setItem('paid', '1')
+      navigate('/done')
+      return
+    }
     setStatus('opening')
+    const txId = sessionStorage.getItem('sessionId')
+      ? `photobooth-${sessionStorage.getItem('sessionId')}`
+      : `photobooth-${Date.now()}`
 
-    // Unieke transactie ID
-    const txId = `photobooth-${Date.now()}`
-
-    // Callback URLs — vervang door jouw domeinnaam
-    const baseUrl = window.location.origin
-    const callbackSuccess = `${baseUrl}/payment?payment=success`
-    const callbackFail = `${baseUrl}/payment?payment=fail`
-
-    // SumUp URL scheme — opent de SumUp app op de iPad
-    const sumupUrl = [
-      `sumupmerchant://pay/1.0`,
-      `?affiliate-key=${SUMUP_AFFILIATE_KEY}`,
-      `&amount=${PRICE.toFixed(2)}`,
-      `&currency=${CURRENCY}`,
-      `&title=Fotostrip`,
-      `&foreign-tx-id=${txId}`,
+    const base = window.location.origin
+    const url = [
+      'sumupmerchant://pay/1.0',
+      `?affiliate-key=${encodeURIComponent(config.sumupKey)}`,
+      `&amount=${Number(config.price).toFixed(2)}`,
+      `&currency=${config.currency || 'EUR'}`,
+      `&title=${encodeURIComponent(config.eventName || 'Fotostrip')}`,
+      `&foreign-tx-id=${encodeURIComponent(txId)}`,
       `&skip-screen-success=true`,
-      `&callbacksuccess=${encodeURIComponent(callbackSuccess)}`,
-      `&callbackfail=${encodeURIComponent(callbackFail)}`,
+      `&callbacksuccess=${encodeURIComponent(`${base}/payment?payment=success`)}`,
+      `&callbackfail=${encodeURIComponent(`${base}/payment?payment=fail`)}`,
     ].join('')
-
-    window.location.href = sumupUrl
+    window.location.href = url
   }
 
   if (status === 'success') {
     return (
-      <div style={{ ...styles.container, gap: '16px' }}>
-        <div style={{ fontSize: '80px' }}>✅</div>
-        <p style={{ fontSize: '24px' }}>Betaling geslaagd!</p>
+      <div style={{ ...s.container, gap: 20 }}>
+        <div style={{ ...s.iconCircle, background: '#22c55e22', border: '2px solid #22c55e' }}>
+          <span style={{ fontSize: 48 }}>✓</span>
+        </div>
+        <h2 style={{ fontSize: 28, fontWeight: 700 }}>Betaling geslaagd!</h2>
+        <p style={{ color: 'var(--text2)' }}>Je strip wordt nu gedrukt…</p>
       </div>
     )
   }
 
   if (status === 'fail') {
     return (
-      <div style={{ ...styles.container, gap: '16px' }}>
-        <div style={{ fontSize: '80px' }}>❌</div>
-        <p style={{ fontSize: '24px' }}>Betaling mislukt</p>
-        <button style={styles.btn} onClick={() => setStatus('waiting')}>
-          Probeer opnieuw
+      <div style={{ ...s.container, gap: 20 }}>
+        <div style={{ ...s.iconCircle, background: '#ef444422', border: '2px solid #ef4444' }}>
+          <span style={{ fontSize: 48 }}>✕</span>
+        </div>
+        <h2 style={{ fontSize: 28, fontWeight: 700 }}>Betaling mislukt</h2>
+        <p style={{ color: 'var(--text2)', textAlign: 'center', maxWidth: 300 }}>
+          Probeer opnieuw of gebruik een andere betaalmethode.
+        </p>
+        <button style={{ ...s.btnPrimary, background: accent }} onClick={() => setStatus('idle')}>
+          Opnieuw proberen
         </button>
-        <button style={{ ...styles.btn, background: 'transparent', color: '#666', border: '1px solid #333' }}
-          onClick={() => navigate('/preview')}>
-          Terug
-        </button>
+        <button style={s.btnGhost} onClick={() => navigate('/preview')}>← Terug</button>
       </div>
     )
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.priceBox}>
-        <p style={styles.priceLabel}>Te betalen</p>
-        <p style={styles.price}>€{PRICE.toFixed(2)}</p>
+    <div style={s.container}>
+      <div style={s.priceCard}>
+        <p style={s.priceLabel}>Te betalen</p>
+        <p style={{ ...s.price, color: accent }}>
+          €{Number(config.price).toFixed(2)}
+        </p>
       </div>
 
-      <div style={styles.instructions}>
-        <p style={styles.step}>1. Tik op "Betalen"</p>
-        <p style={styles.step}>2. SumUp opent automatisch</p>
-        <p style={styles.step}>3. Houd je pas bij de terminal</p>
+      <div style={s.steps}>
+        {[
+          ['1', 'Tik op "Betalen"'],
+          ['2', 'SumUp opent automatisch'],
+          ['3', 'Houd je pas bij de terminal'],
+        ].map(([n, txt]) => (
+          <div key={n} style={s.step}>
+            <span style={{ ...s.stepNum, background: accent }}>{n}</span>
+            <span style={s.stepTxt}>{txt}</span>
+          </div>
+        ))}
       </div>
 
       <button
-        style={styles.btn}
+        style={{ ...s.btnPrimary, background: status === 'opening' ? '#333' : accent }}
         onClick={openSumUp}
         disabled={status === 'opening'}
       >
-        {status === 'opening' ? 'SumUp opent...' : '💳 Betalen'}
+        {status === 'opening' ? 'SumUp opent…' : '💳 Betalen'}
       </button>
 
-      <button
-        style={{ background: 'none', border: 'none', color: '#555', fontSize: '14px', cursor: 'pointer', marginTop: '8px' }}
-        onClick={() => navigate('/preview')}
-      >
-        Terug
-      </button>
+      <button style={s.btnGhost} onClick={() => navigate('/preview')}>← Terug</button>
     </div>
   )
 }
 
-const styles = {
+const s = {
   container: {
-    width: '100%',
-    height: '100%',
-    background: '#0a0a0a',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '32px',
-    padding: '24px',
+    width: '100%', height: '100%',
+    background: 'var(--bg)',
+    display: 'flex', flexDirection: 'column',
+    alignItems: 'center', justifyContent: 'center',
+    gap: 32, padding: 32,
   },
-  priceBox: {
-    textAlign: 'center',
+  iconCircle: {
+    width: 100, height: 100, borderRadius: 50,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
-  priceLabel: {
-    fontSize: '16px',
-    color: '#666',
-    textTransform: 'uppercase',
-    letterSpacing: '1px',
-    marginBottom: '8px',
+  priceCard: {
+    textAlign: 'center', padding: '24px 48px',
+    background: 'var(--bg2)', borderRadius: 20,
+    border: '1px solid var(--border)',
   },
-  price: {
-    fontSize: '72px',
-    fontWeight: '700',
-    letterSpacing: '-2px',
+  priceLabel: { fontSize: 13, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: 8 },
+  price: { fontSize: 72, fontWeight: 800, letterSpacing: '-2px' },
+  steps: { display: 'flex', flexDirection: 'column', gap: 14, width: '100%', maxWidth: 360 },
+  step: { display: 'flex', alignItems: 'center', gap: 16 },
+  stepNum: {
+    width: 28, height: 28, borderRadius: 50,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0,
   },
-  instructions: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px',
-    textAlign: 'center',
+  stepTxt: { fontSize: 17, color: 'var(--text2)' },
+  btnPrimary: {
+    width: '100%', maxWidth: 360, padding: '20px',
+    borderRadius: 'var(--radius)', fontSize: 20, fontWeight: 700, color: '#fff',
+    transition: 'background 200ms',
   },
-  step: {
-    fontSize: '18px',
-    color: '#888',
-  },
-  btn: {
-    padding: '18px 48px',
-    background: '#fff',
-    border: 'none',
-    borderRadius: '14px',
-    color: '#000',
-    fontSize: '20px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    minWidth: '240px',
+  btnGhost: {
+    background: 'none', color: 'var(--text3)', fontSize: 15,
   },
 }
