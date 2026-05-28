@@ -1,0 +1,63 @@
+name: Deploy naar GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # Handmatig triggeren via GitHub UI
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build PWA
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Dependencies installeren
+        run: npm ci
+
+      - name: Tests draaien (build stopt bij falen)
+        run: npm test
+
+      - name: Bouwen voor productie
+        run: npm run build
+        env:
+          VITE_PRICE:       ${{ secrets.VITE_PRICE || '3.00' }}
+          VITE_SUMUP_KEY:   ${{ secrets.VITE_SUMUP_KEY }}
+          VITE_BASE_URL:    'https://achimpieters.github.io/photobooth'
+
+      - name: GitHub Pages artifact uploaden
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
+  deploy:
+    name: Deploy naar Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

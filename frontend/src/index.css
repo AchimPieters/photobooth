@@ -1,0 +1,50 @@
+/* ── Reset & kiosk-basis ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #1a1a2e;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Geen context-menu op lang indrukken */
+* { -webkit-touch-callout: none; }
+
+/* Geen selectie-highlight */
+::selection { background: transparent; }
+
+/* Kiosk: scherm altijd volledig benut */
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+}
+
+/* ── Knoppen ── */
+button {
+  cursor: pointer;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  -webkit-appearance: none;
+}
+button:active { opacity: 0.85; transform: scale(0.98); }
+
+/* ── Print: alleen de strip ── */
+@media print {
+  body > * { display: none !important; }
+  #print-strip { display: block !important; }
+  #print-strip img {
+    width: 100%;
+    max-width: 10cm;
+    margin: 0 auto;
+    display: block;
+  }
+  @page { margin: 5mm; }
+}
