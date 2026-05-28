@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, feature/uikit-ios12]
   pull_request:
     branches: [main]
 
@@ -144,13 +144,54 @@ jobs:
           path: TestResults/
 
   # ──────────────────────────────────────────────
-  # 4. Archive (release build) — alleen op main
+  # 4. Legacy (UIKit/iOS12) unit tests
+  # ──────────────────────────────────────────────
+  legacy-tests:
+    name: Legacy Unit Tests (iOS 12 / UIKit)
+    runs-on: macos-15
+    timeout-minutes: 20
+    needs: build
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.app
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: Photobooth
+        run: xcodegen generate
+
+      - name: Run Legacy unit tests
+        run: |
+          xcodebuild test \
+            -project "$PROJECT" \
+            -scheme PhotoboothLegacy \
+            -destination "platform=iOS Simulator,name=iPad (9th generation),OS=16.4" \
+            -only-testing:PhotoboothLegacyTests \
+            -enableCodeCoverage YES \
+            -resultBundlePath TestResults/legacy.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcpretty --color --report junit --output TestResults/legacy-results.xml
+
+      - name: Upload legacy test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: legacy-test-results
+          path: TestResults/
+
+  # ──────────────────────────────────────────────
+  # 5. Archive (release build) — alleen op main
   # ──────────────────────────────────────────────
   archive:
     name: Archive (Release)
     runs-on: macos-15
     timeout-minutes: 30
-    needs: [unit-tests, ui-tests]
+    needs: [unit-tests, ui-tests, legacy-tests]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
