@@ -23,12 +23,12 @@ class PhotoboothViewModel: ObservableObject {
     @Published var flashVisible: Bool = false
     @Published var currentPhotoIndex: Int = 0
 
-    // MARK: - Config
-    let totalPhotos = 4
-    let countdownSeconds = 3
-    let price = 3.00
-    let currency = "EUR"
-    var sumupAffiliateKey = "JOUW_AFFILIATE_KEY_HIER" // ← vervangen met echte key
+    // MARK: - Config (driven by AppConfig / Info.plist)
+    let totalPhotos       = AppConfig.totalPhotos
+    let countdownSeconds  = AppConfig.countdownSecs
+    let price             = AppConfig.price
+    let currency          = AppConfig.currency
+    var sumupAffiliateKey = AppConfig.sumupAffiliateKey
 
     private var countdownTask: Task<Void, Never>?
 
