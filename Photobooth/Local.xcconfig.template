@@ -1,7 +1,0 @@
-// Kopieer dit bestand naar Local.xcconfig (staat in .gitignore)
-// en vul je eigen waarden in.
-//
-// Gebruik: Xcode → Project → Configurations → Debug/Release → voeg Local.xcconfig toe
-
-SUMUP_AFFILIATE_KEY = JOUW_AFFILIATE_KEY_HIER
-PHOTOBOOTH_PRICE = 3.00
