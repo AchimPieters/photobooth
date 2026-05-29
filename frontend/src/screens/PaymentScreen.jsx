@@ -19,7 +19,7 @@ function makeToken() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
-export default function PaymentScreen({ stripDataUrl, paymentStatus, onSuccess, onFail, onBack, price: priceProp }) {
+export default function PaymentScreen({ stripDataUrl, paymentStatus, onSuccess, onFail, onBack, price: priceProp, licensed }) {
   const price     = priceProp ?? config.price
   const [txId]    = useState(() => `pb-${Date.now()}`)
   const [waiting, setWaiting] = useState(false)
@@ -43,16 +43,26 @@ export default function PaymentScreen({ stripDataUrl, paymentStatus, onSuccess, 
         <h2 style={s.title}>Betaling</h2>
         <p style={s.amount}>€{price.toFixed(2)}</p>
 
-        {waiting && (
+        {!licensed && (
+          <div style={s.demoBox}>
+            <p style={s.demoText}>🔒  Betalen vereist een licentie</p>
+            <p style={s.demoSub}>Activeer een licentie via het admin panel (5× tik op het logo)</p>
+          </div>
+        )}
+        {licensed && waiting && (
           <p style={s.waiting}>Wachten op bevestiging…</p>
         )}
-        {paymentStatus === 'failed' && (
+        {licensed && paymentStatus === 'failed' && (
           <p style={s.error}>⚠️  Betaling mislukt — probeer opnieuw</p>
         )}
       </div>
 
       <div style={s.actions}>
-        <button style={s.payBtn} onClick={openSumUp}>
+        <button
+          style={{ ...s.payBtn, opacity: licensed ? 1 : 0.3 }}
+          onClick={licensed ? openSumUp : undefined}
+          disabled={!licensed}
+        >
           Betalen met SumUp  ↗
         </button>
         <button style={s.backBtn} onClick={onBack}>
@@ -71,6 +81,9 @@ const s = {
   amount: { color: '#e94560', fontSize: 72, fontWeight: 900 },
   waiting: { color: 'rgba(255,255,255,0.6)', fontSize: 18, marginTop: 8 },
   error: { color: '#e94560', fontSize: 18, marginTop: 8 },
+  demoBox: { marginTop: 16, background: 'rgba(233,69,96,0.08)', border: '1px solid rgba(233,69,96,0.2)', borderRadius: 14, padding: '16px 20px', textAlign: 'center', maxWidth: 320 },
+  demoText: { color: '#e94560', fontSize: 18, fontWeight: 700, marginBottom: 6 },
+  demoSub: { color: 'rgba(255,255,255,0.5)', fontSize: 14, lineHeight: 1.5 },
   actions: { padding: '0 50px', display: 'flex', flexDirection: 'column', gap: 16 },
   payBtn: { padding: '26px', borderRadius: 18, background: 'linear-gradient(90deg,#e94560,#c0392b)', color: '#fff', fontSize: 24, fontWeight: 600, boxShadow: '0 6px 20px rgba(233,69,96,0.4)' },
   backBtn: { padding: '18px', background: 'transparent', color: 'rgba(255,255,255,0.6)', fontSize: 18 },

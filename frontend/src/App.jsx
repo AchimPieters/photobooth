@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import WelcomeScreen              from './screens/WelcomeScreen'
 import CameraScreen               from './screens/CameraScreen'
 import PreviewScreen              from './screens/PreviewScreen'
@@ -9,6 +9,7 @@ import PaymentScreen              from './screens/PaymentScreen'
 import DoneScreen                 from './screens/DoneScreen'
 import AdminScreen                from './screens/AdminScreen'
 import { buildPassportStrip }     from './utils/passportStrip'
+import { getLicenseInfo }         from './utils/license'
 import config                     from './utils/config'
 
 function readPaymentResult() {
@@ -35,8 +36,19 @@ export default function App() {
     if (result === 'fail')    return 'payment'
     return 'welcome'
   })
-  const [session,   setSession]   = useState(null)
-  const [showAdmin, setShowAdmin] = useState(false)
+  const [session,    setSession]   = useState(null)
+  const [showAdmin,  setShowAdmin] = useState(false)
+  const [licensed,   setLicensed]  = useState(false)
+  const [licenseInfo, setLicInfo]  = useState(null)
+
+  const refreshLicense = useCallback(() => {
+    getLicenseInfo().then(info => {
+      setLicensed(info?.valid ?? false)
+      setLicInfo(info)
+    })
+  }, [])
+
+  useEffect(() => { refreshLicense() }, [refreshLicense])
 
   // — Fotostrip flow —
   const startStrip = useCallback(() => {
@@ -101,6 +113,8 @@ export default function App() {
           onStartStrip={startStrip}
           onStartPassport={startPassport}
           onAdmin={() => setShowAdmin(true)}
+          licensed={licensed}
+          licenseInfo={licenseInfo}
         />
       )}
 
@@ -143,6 +157,7 @@ export default function App() {
           stripDataUrl={session.stripDataUrl}
           paymentStatus={session.paymentStatus}
           price={paymentPrice}
+          licensed={licensed}
           onSuccess={onPaymentSuccess}
           onFail={onPaymentFail}
           onBack={() => setScreen(session.mode === 'passport' ? 'passport-preview' : 'preview')}
@@ -151,6 +166,7 @@ export default function App() {
       {screen === 'done' && session && (
         <DoneScreen
           stripDataUrl={session.stripDataUrl}
+          licensed={licensed}
           onRestart={restart}
         />
       )}
@@ -162,7 +178,7 @@ export default function App() {
         )}
       </div>
 
-      {showAdmin && <AdminScreen onClose={() => setShowAdmin(false)} />}
+      {showAdmin && <AdminScreen onClose={() => { setShowAdmin(false); refreshLicense() }} />}
     </>
   )
 }

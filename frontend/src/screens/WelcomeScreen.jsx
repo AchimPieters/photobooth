@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import config from '../utils/config'
 
-export default function WelcomeScreen({ onStartStrip, onStartPassport, onAdmin }) {
+export default function WelcomeScreen({ onStartStrip, onStartPassport, onAdmin, licensed, licenseInfo }) {
   const [pulse, setPulse] = useState(false)
   const tapCount = useRef(0)
   const tapTimer = useRef(null)
@@ -36,6 +36,12 @@ export default function WelcomeScreen({ onStartStrip, onStartPassport, onAdmin }
         </div>
         <h1 style={s.title}>Photobooth</h1>
       </div>
+
+      {/* Licentie-status */}
+      {licensed
+        ? <p style={s.licBadge}>✓ {licenseInfo?.licensee}</p>
+        : <p style={s.demoBadge}>DEMO — betalen &amp; printen uitgeschakeld</p>
+      }
 
       {/* Keuze-knoppen */}
       <div style={s.modes}>
@@ -99,5 +105,14 @@ const s = {
   modePrice: {
     marginTop: 8, color: '#e94560',
     fontSize: 20, fontWeight: 700,
+  },
+  demoBadge: {
+    background: 'rgba(233,69,96,0.12)', color: '#e94560',
+    fontSize: 13, fontWeight: 700, letterSpacing: 0.5,
+    padding: '8px 18px', borderRadius: 20,
+    border: '1px solid rgba(233,69,96,0.3)',
+  },
+  licBadge: {
+    color: 'rgba(39,174,96,0.8)', fontSize: 14, fontWeight: 600,
   },
 }

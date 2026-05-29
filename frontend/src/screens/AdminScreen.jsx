@@ -1,15 +1,236 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { getSettings, saveSettings, verifyPassword, hashPassword } from '../utils/settings'
 import { getConfig } from '../utils/config'
+import { getLicenseInfo, verifyAndParseLicense, saveLicense, removeLicense, getRawLicense } from '../utils/license'
+import { generateLicense } from '../utils/licenseGen'
+
+// ─── LOGIN ───────────────────────────────────────────────────────────────────
+
+function LoginScreen({ onSuccess, onClose }) {
+  const [pw, setPw] = useState('')
+  const [err, setErr] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  const login = async () => {
+    setBusy(true)
+    const ok = await verifyPassword(pw)
+    setBusy(false)
+    if (ok) onSuccess()
+    else setErr(true)
+  }
+
+  return (
+    <div style={s.root}>
+      <div style={s.topBar}>
+        <button style={s.closeBtn} onClick={onClose}>✕</button>
+        <span style={s.topTitle}>Admin</span>
+        <div style={{ width: 44 }} />
+      </div>
+      <div style={s.loginWrap}>
+        <div style={s.lockIcon}>🔒</div>
+        <h2 style={s.loginTitle}>Admin toegang</h2>
+        <input
+          style={{ ...s.input, ...(err ? s.inputErr : {}) }}
+          type="password" placeholder="Wachtwoord"
+          value={pw} autoComplete="current-password"
+          onChange={e => { setPw(e.target.value); setErr(false) }}
+          onKeyDown={e => e.key === 'Enter' && !busy && login()}
+        />
+        {err && <p style={s.errMsg}>Onjuist wachtwoord</p>}
+        <button style={s.loginBtn} onClick={login} disabled={busy}>
+          {busy ? 'Controleren…' : 'Inloggen'}
+        </button>
+        <p style={s.hint}>Standaard wachtwoord: photobooth</p>
+      </div>
+    </div>
+  )
+}
+
+// ─── LICENTIE-SECTIE ─────────────────────────────────────────────────────────
+
+function LicenseSection() {
+  const [licInfo,      setLicInfo]      = useState(null)
+  const [licLoading,   setLicLoading]   = useState(true)
+  const [licInput,     setLicInput]     = useState(getRawLicense())
+  const [licMsg,       setLicMsg]       = useState(null)   // { ok, text }
+
+  const [genName,      setGenName]      = useState('')
+  const [genExpiry,    setGenExpiry]    = useState(() => {
+    const d = new Date(); d.setFullYear(d.getFullYear() + 1)
+    return d.toISOString().slice(0, 10)
+  })
+  const [genResult,    setGenResult]    = useState('')
+  const [genMsg,       setGenMsg]       = useState(null)
+  const [genBusy,      setGenBusy]      = useState(false)
+  const [copied,       setCopied]       = useState(false)
+
+  const [privInput,    setPrivInput]    = useState('')
+  const [privMsg,      setPrivMsg]      = useState(null)
+  const [showPrivForm, setShowPrivForm] = useState(false)
+
+  const hasPrivKey = Boolean(getSettings().licensePrivateKey)
+
+  useEffect(() => {
+    getLicenseInfo().then(info => { setLicInfo(info); setLicLoading(false) })
+  }, [])
+
+  const activate = async () => {
+    const raw = licInput.trim()
+    if (!raw) { removeLicense(); setLicInfo(null); setLicMsg({ ok: true, text: 'Licentie verwijderd' }); return }
+    const payload = await verifyAndParseLicense(raw)
+    if (!payload) { setLicMsg({ ok: false, text: 'Ongeldige licentiecode — controleer op typefouten' }); return }
+    if (new Date(payload.expires) < new Date()) { setLicMsg({ ok: false, text: `Licentie verlopen op ${payload.expires}` }); return }
+    saveLicense(raw)
+    const info = await getLicenseInfo()
+    setLicInfo(info)
+    setLicMsg({ ok: true, text: `Licentie geactiveerd voor ${payload.licensee}` })
+  }
+
+  const deactivate = () => {
+    removeLicense(); setLicInfo(null); setLicInput('')
+    setLicMsg({ ok: true, text: 'Licentie verwijderd' })
+  }
+
+  const generate = async () => {
+    if (!genName.trim()) { setGenMsg({ ok: false, text: 'Naam is verplicht' }); return }
+    const privRaw = getSettings().licensePrivateKey
+    if (!privRaw) { setGenMsg({ ok: false, text: 'Geen privésleutel geconfigureerd' }); return }
+    setGenBusy(true)
+    try {
+      const code = await generateLicense({ licensee: genName.trim(), expires: genExpiry, privateKeyJwk: JSON.parse(privRaw) })
+      setGenResult(code)
+      setGenMsg(null)
+    } catch (e) {
+      setGenMsg({ ok: false, text: 'Genereren mislukt: ' + e.message })
+    } finally {
+      setGenBusy(false)
+    }
+  }
+
+  const copyCode = () => {
+    navigator.clipboard?.writeText(genResult)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const importPrivKey = async () => {
+    try {
+      const jwk = JSON.parse(privInput.trim())
+      await crypto.subtle.importKey('jwk', jwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign'])
+      saveSettings({ licensePrivateKey: privInput.trim() })
+      setPrivMsg({ ok: true, text: 'Privésleutel opgeslagen' })
+      setPrivInput('')
+      setShowPrivForm(false)
+    } catch {
+      setPrivMsg({ ok: false, text: 'Ongeldige sleutel — controleer het JSON-formaat' })
+    }
+  }
+
+  const statusBadge = licLoading ? null
+    : licInfo?.valid
+      ? { bg: 'rgba(39,174,96,0.15)', color: '#27ae60', text: `✓  ${licInfo.licensee} — geldig t/m ${licInfo.expires}` }
+      : licInfo?.reason === 'expired'
+        ? { bg: 'rgba(233,69,96,0.1)', color: '#e94560', text: `Verlopen op ${licInfo.expires}` }
+        : { bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.45)', text: 'Geen actieve licentie — DEMO modus' }
+
+  return (
+    <>
+      {/* Status */}
+      {statusBadge && (
+        <div style={{ ...s.badge, background: statusBadge.bg, color: statusBadge.color }}>
+          {statusBadge.text}
+        </div>
+      )}
+
+      {/* Activeren */}
+      <Section title="🪪 Licentie activeren">
+        <Field label="Licentiecode (plakken of typen)">
+          <textarea
+            style={{ ...s.input, minHeight: 80, resize: 'vertical', fontFamily: 'monospace', fontSize: 13 }}
+            value={licInput} onChange={e => { setLicInput(e.target.value); setLicMsg(null) }}
+            placeholder="pb_eyJ..." spellCheck={false}
+          />
+        </Field>
+        {licMsg && <p style={{ ...s.errMsg, color: licMsg.ok ? '#27ae60' : '#e94560', marginBottom: 10 }}>{licMsg.text}</p>}
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button style={{ ...s.smBtn, flex: 1 }} onClick={activate}>Activeer</button>
+          {licInfo?.valid && (
+            <button style={{ ...s.smBtn, background: 'rgba(233,69,96,0.15)', color: '#e94560' }} onClick={deactivate}>
+              Verwijder
+            </button>
+          )}
+        </div>
+      </Section>
+
+      {/* Genereren (alleen als privésleutel aanwezig) */}
+      {hasPrivKey && (
+        <Section title="⚙️ Licentie genereren">
+          <Field label="Naam licentiehouder">
+            <input style={s.input} type="text" value={genName}
+              onChange={e => { setGenName(e.target.value); setGenMsg(null) }}
+              placeholder="Studio Naam" />
+          </Field>
+          <Field label="Vervaldatum">
+            <input style={s.input} type="date" value={genExpiry}
+              onChange={e => setGenExpiry(e.target.value)} />
+          </Field>
+          {genMsg && <p style={{ ...s.errMsg, color: genMsg.ok ? '#27ae60' : '#e94560', marginBottom: 10 }}>{genMsg.text}</p>}
+          <button style={s.smBtn} onClick={generate} disabled={genBusy}>
+            {genBusy ? 'Genereren…' : 'Genereer licentiecode'}
+          </button>
+          {genResult && (
+            <div style={{ marginTop: 14 }}>
+              <p style={{ ...s.label, marginBottom: 6 }}>Licentiecode — stuur dit naar de klant:</p>
+              <div style={s.codeBox}>{genResult}</div>
+              <button style={{ ...s.smBtn, marginTop: 8, background: copied ? 'rgba(39,174,96,0.2)' : undefined }} onClick={copyCode}>
+                {copied ? '✓  Gekopieerd!' : 'Kopieer naar klembord'}
+              </button>
+            </div>
+          )}
+        </Section>
+      )}
+
+      {/* Privésleutel beheer */}
+      <Section title="🔐 Privésleutel (alleen voor licentie-uitgever)">
+        <p style={{ ...s.label, marginBottom: 10 }}>
+          Status: {hasPrivKey ? '✓ Geconfigureerd' : 'Niet ingesteld'}
+        </p>
+        {privMsg && <p style={{ ...s.errMsg, color: privMsg.ok ? '#27ae60' : '#e94560', marginBottom: 10 }}>{privMsg.text}</p>}
+        {!showPrivForm ? (
+          <button style={s.smBtn} onClick={() => setShowPrivForm(true)}>
+            {hasPrivKey ? 'Privésleutel vervangen' : 'Privésleutel importeren'}
+          </button>
+        ) : (
+          <>
+            <Field label="Privésleutel (JWK JSON)">
+              <textarea
+                style={{ ...s.input, minHeight: 100, resize: 'vertical', fontFamily: 'monospace', fontSize: 12 }}
+                value={privInput} onChange={e => { setPrivInput(e.target.value); setPrivMsg(null) }}
+                placeholder='{"kty":"EC","crv":"P-256","d":"..."}'
+                spellCheck={false}
+              />
+            </Field>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button style={{ ...s.smBtn, flex: 1 }} onClick={importPrivKey}>Importeer</button>
+              <button style={{ ...s.smBtn, background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }}
+                onClick={() => { setShowPrivForm(false); setPrivInput('') }}>
+                Annuleer
+              </button>
+            </div>
+          </>
+        )}
+      </Section>
+    </>
+  )
+}
+
+// ─── MAIN ADMIN SCREEN ───────────────────────────────────────────────────────
 
 export default function AdminScreen({ onClose }) {
   const [phase, setPhase] = useState('login')
-  const [pw, setPw] = useState('')
-  const [loginError, setLoginError] = useState(false)
-  const [loginBusy, setLoginBusy] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [pwError, setPwError] = useState('')
-  const [newPw, setNewPw] = useState('')
+  const [saved,     setSaved]     = useState(false)
+  const [pwError,   setPwError]   = useState('')
+  const [newPw,     setNewPw]     = useState('')
   const [confirmPw, setConfirmPw] = useState('')
   const savedTimer = useRef(null)
 
@@ -27,20 +248,11 @@ export default function AdminScreen({ onClose }) {
       autoRestartSecs:   String(c.autoRestartSecs),
       stripFooter:       c.stripFooter,
       stripBg:           c.stripBg,
-      // keep original passwordHash for save
       _passwordHash:     s.passwordHash,
     }
   })
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }))
-
-  const login = async () => {
-    setLoginBusy(true)
-    const ok = await verifyPassword(pw)
-    setLoginBusy(false)
-    if (ok) { setPhase('settings'); setLoginError(false) }
-    else setLoginError(true)
-  }
 
   const save = async () => {
     setPwError('')
@@ -56,48 +268,21 @@ export default function AdminScreen({ onClose }) {
       passportPrice:     Number(form.passportPrice) || 0,
       currency:          form.currency.trim().toUpperCase() || 'EUR',
       baseUrl:           form.baseUrl.trim(),
-      totalPhotos:       Math.max(1, Math.min(8, parseInt(form.totalPhotos) || 4)),
-      countdownSecs:     Math.max(1, Math.min(10, parseInt(form.countdownSecs) || 3)),
-      autoRestartSecs:   Math.max(5, Math.min(120, parseInt(form.autoRestartSecs) || 15)),
+      totalPhotos:       Math.max(1, Math.min(8,   parseInt(form.totalPhotos)    || 4)),
+      countdownSecs:     Math.max(1, Math.min(10,  parseInt(form.countdownSecs)  || 3)),
+      autoRestartSecs:   Math.max(5, Math.min(120, parseInt(form.autoRestartSecs)|| 15)),
       stripFooter:       form.stripFooter,
       stripBg:           form.stripBg,
       passwordHash,
     })
-    setNewPw('')
-    setConfirmPw('')
+    setNewPw(''); setConfirmPw('')
     clearTimeout(savedTimer.current)
     setSaved(true)
     savedTimer.current = setTimeout(() => setSaved(false), 2500)
   }
 
   if (phase === 'login') {
-    return (
-      <div style={s.root}>
-        <div style={s.topBar}>
-          <button style={s.closeBtn} onClick={onClose}>✕</button>
-          <span style={s.topTitle}>Admin</span>
-          <div style={{ width: 44 }} />
-        </div>
-        <div style={s.loginWrap}>
-          <div style={s.lockIcon}>🔒</div>
-          <h2 style={s.loginTitle}>Admin toegang</h2>
-          <input
-            style={{ ...s.input, ...(loginError ? s.inputErr : {}) }}
-            type="password"
-            placeholder="Wachtwoord"
-            value={pw}
-            autoComplete="current-password"
-            onChange={e => { setPw(e.target.value); setLoginError(false) }}
-            onKeyDown={e => e.key === 'Enter' && !loginBusy && login()}
-          />
-          {loginError && <p style={s.errMsg}>Onjuist wachtwoord</p>}
-          <button style={s.loginBtn} onClick={login} disabled={loginBusy}>
-            {loginBusy ? 'Controleren…' : 'Inloggen'}
-          </button>
-          <p style={s.hint}>Standaard wachtwoord: photobooth</p>
-        </div>
-      </div>
-    )
+    return <LoginScreen onSuccess={() => setPhase('settings')} onClose={onClose} />
   }
 
   return (
@@ -109,6 +294,11 @@ export default function AdminScreen({ onClose }) {
       </div>
 
       <div style={s.scroll}>
+
+        {/* ── Licenties ── */}
+        <LicenseSection />
+
+        {/* ── Betaling ── */}
         <Section title="💳 Betaling">
           <Field label="SumUp Affiliate Key">
             <input style={s.input} type="text" value={form.sumupAffiliateKey}
@@ -134,6 +324,7 @@ export default function AdminScreen({ onClose }) {
           </Field>
         </Section>
 
+        {/* ── Fotobooth ── */}
         <Section title="📷 Fotobooth">
           <Field label="Aantal foto's (1–8)">
             <input style={s.input} type="number" min="1" max="8"
@@ -149,6 +340,7 @@ export default function AdminScreen({ onClose }) {
           </Field>
         </Section>
 
+        {/* ── Fotostrip ── */}
         <Section title="🎞️ Fotostrip">
           <Field label="Footer tekst">
             <input style={s.input} type="text"
@@ -157,14 +349,14 @@ export default function AdminScreen({ onClose }) {
           <Field label="Achtergrondkleur">
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               <input type="color" value={form.stripBg}
-                onChange={e => set('stripBg', e.target.value)}
-                style={s.colorPicker} />
+                onChange={e => set('stripBg', e.target.value)} style={s.colorPicker} />
               <input style={{ ...s.input, flex: 1 }} type="text"
                 value={form.stripBg} onChange={e => set('stripBg', e.target.value)} />
             </div>
           </Field>
         </Section>
 
+        {/* ── Wachtwoord ── */}
         <Section title="🔑 Wachtwoord wijzigen">
           <Field label="Nieuw wachtwoord">
             <input style={s.input} type="password" value={newPw}
@@ -182,12 +374,13 @@ export default function AdminScreen({ onClose }) {
         <button style={saved ? s.savedBtn : s.saveBtn} onClick={save}>
           {saved ? '✓  Opgeslagen!' : 'Opslaan'}
         </button>
-
         <div style={{ height: 50 }} />
       </div>
     </div>
   )
 }
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
 
 function Section({ title, children }) {
   return (
@@ -207,6 +400,8 @@ function Field({ label, children }) {
   )
 }
 
+// ─── STYLES ──────────────────────────────────────────────────────────────────
+
 const s = {
   root: {
     position: 'fixed', inset: 0, zIndex: 200,
@@ -223,50 +418,23 @@ const s = {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
   topTitle: { color: '#fff', fontSize: 22, fontWeight: 700 },
-  scroll: {
-    flex: 1, overflowY: 'auto', padding: '20px 24px',
-    WebkitOverflowScrolling: 'touch',
-  },
-  loginWrap: {
-    flex: 1, display: 'flex', flexDirection: 'column',
-    alignItems: 'center', justifyContent: 'center', gap: 16, padding: '0 40px',
-  },
+  scroll: { flex: 1, overflowY: 'auto', padding: '20px 24px', WebkitOverflowScrolling: 'touch' },
+  loginWrap: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '0 40px' },
   lockIcon: { fontSize: 64 },
   loginTitle: { color: '#fff', fontSize: 32, fontWeight: 700 },
-  loginBtn: {
-    width: '100%', padding: '20px', borderRadius: 16,
-    background: 'linear-gradient(90deg,#e94560,#c0392b)',
-    color: '#fff', fontSize: 20, fontWeight: 600, marginTop: 8,
-  },
+  loginBtn: { width: '100%', padding: '20px', borderRadius: 16, background: 'linear-gradient(90deg,#e94560,#c0392b)', color: '#fff', fontSize: 20, fontWeight: 600, marginTop: 8 },
   hint: { color: 'rgba(255,255,255,0.3)', fontSize: 13, marginTop: 4 },
+  badge: { borderRadius: 12, padding: '12px 16px', fontSize: 15, fontWeight: 600, marginBottom: 24, lineHeight: 1.4 },
   section: { marginBottom: 28 },
-  sectionTitle: {
-    color: 'rgba(255,255,255,0.45)', fontSize: 13, fontWeight: 700,
-    letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14,
-  },
+  sectionTitle: { color: 'rgba(255,255,255,0.45)', fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 },
   field: { marginBottom: 16 },
   label: { color: 'rgba(255,255,255,0.65)', fontSize: 14, marginBottom: 6 },
-  input: {
-    width: '100%', padding: '14px 16px', borderRadius: 12,
-    background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
-    color: '#fff', fontSize: 16, boxSizing: 'border-box', outline: 'none',
-  },
+  input: { width: '100%', padding: '14px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff', fontSize: 16, boxSizing: 'border-box', outline: 'none' },
   inputErr: { borderColor: '#e94560' },
   errMsg: { color: '#e94560', fontSize: 14, marginTop: 2 },
-  colorPicker: {
-    width: 56, height: 44, borderRadius: 10,
-    border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer', padding: 2,
-    background: 'rgba(255,255,255,0.08)',
-  },
-  saveBtn: {
-    width: '100%', padding: '22px', borderRadius: 16,
-    background: 'linear-gradient(90deg,#e94560,#c0392b)',
-    color: '#fff', fontSize: 20, fontWeight: 600,
-    boxShadow: '0 6px 20px rgba(233,69,96,0.4)', marginTop: 8,
-  },
-  savedBtn: {
-    width: '100%', padding: '22px', borderRadius: 16,
-    background: 'linear-gradient(90deg,#27ae60,#1e8449)',
-    color: '#fff', fontSize: 20, fontWeight: 600, marginTop: 8,
-  },
+  colorPicker: { width: 56, height: 44, borderRadius: 10, border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer', padding: 2, background: 'rgba(255,255,255,0.08)' },
+  smBtn: { padding: '14px 20px', borderRadius: 12, background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 16, fontWeight: 600 },
+  codeBox: { background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '12px 14px', fontFamily: 'monospace', fontSize: 12, color: 'rgba(255,255,255,0.8)', wordBreak: 'break-all', lineHeight: 1.6 },
+  saveBtn: { width: '100%', padding: '22px', borderRadius: 16, background: 'linear-gradient(90deg,#e94560,#c0392b)', color: '#fff', fontSize: 20, fontWeight: 600, boxShadow: '0 6px 20px rgba(233,69,96,0.4)', marginTop: 8 },
+  savedBtn: { width: '100%', padding: '22px', borderRadius: 16, background: 'linear-gradient(90deg,#27ae60,#1e8449)', color: '#fff', fontSize: 20, fontWeight: 600, marginTop: 8 },
 }
