@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import config from '../utils/config'
 
 const styles = {
@@ -10,7 +10,7 @@ const styles = {
     padding: '40px 0 50px',
   },
   top: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 },
-  icon: { fontSize: 100, lineHeight: 1, transition: 'transform 1.8s ease-in-out' },
+  icon: { fontSize: 100, lineHeight: 1, transition: 'transform 1.8s ease-in-out', cursor: 'default', userSelect: 'none' },
   title: { fontSize: 64, fontWeight: 700, color: '#fff', letterSpacing: -1 },
   subtitle: { fontSize: 24, fontWeight: 300, color: 'rgba(255,255,255,0.6)', letterSpacing: 2 },
   bottom: { width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: '0 60px' },
@@ -24,18 +24,38 @@ const styles = {
   price: { fontSize: 18, fontWeight: 300, color: 'rgba(255,255,255,0.4)' },
 }
 
-export default function WelcomeScreen({ onStart }) {
+export default function WelcomeScreen({ onStart, onAdmin }) {
   const [pulse, setPulse] = useState(false)
+  const tapCount = useRef(0)
+  const tapTimer = useRef(null)
 
   useEffect(() => {
     const id = setInterval(() => setPulse(p => !p), 1800)
     return () => clearInterval(id)
   }, [])
 
+  useEffect(() => () => clearTimeout(tapTimer.current), [])
+
+  const handleIconTap = () => {
+    tapCount.current += 1
+    clearTimeout(tapTimer.current)
+    if (tapCount.current >= 5) {
+      tapCount.current = 0
+      onAdmin()
+      return
+    }
+    tapTimer.current = setTimeout(() => { tapCount.current = 0 }, 3000)
+  }
+
   return (
     <div style={styles.root}>
       <div style={styles.top}>
-        <div style={{ ...styles.icon, transform: `scale(${pulse ? 1.06 : 1.0})` }}>⦿</div>
+        <div
+          style={{ ...styles.icon, transform: `scale(${pulse ? 1.06 : 1.0})` }}
+          onClick={handleIconTap}
+        >
+          ⦿
+        </div>
         <h1 style={styles.title}>Photobooth</h1>
         <p style={styles.subtitle}>4 foto's · direct printen</p>
       </div>

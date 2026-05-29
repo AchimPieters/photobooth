@@ -1,34 +1,38 @@
 import React, { useState, useEffect } from 'react'
 import config from '../utils/config'
 
-function buildSumUpUrl(txId) {
-  const base = `${config.baseUrl}?payment=`
+function buildSumUpUrl(txId, token) {
   const params = new URLSearchParams({
-    'affiliate-key':     config.sumupAffiliateKey,
-    amount:              config.price.toFixed(2),
-    currency:            config.currency,
-    title:               'Fotostrip',
-    'foreign-tx-id':     txId,
+    'affiliate-key':       config.sumupAffiliateKey,
+    amount:                config.price.toFixed(2),
+    currency:              config.currency,
+    title:                 'Fotostrip',
+    'foreign-tx-id':       txId,
     'skip-screen-success': 'true',
-    callbacksuccess:     `${base}success`,
-    callbackfail:        `${base}fail`,
+    callbacksuccess:       `${config.baseUrl}?payment=success&token=${token}`,
+    callbackfail:          `${config.baseUrl}?payment=fail`,
   })
   return `sumupmerchant://pay/1.0?${params.toString()}`
+}
+
+function makeToken() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
 export default function PaymentScreen({ stripDataUrl, paymentStatus, onSuccess, onFail, onBack }) {
   const [txId]    = useState(() => `pb-${Date.now()}`)
   const [waiting, setWaiting] = useState(false)
 
-  // Als de pagina terug laadt na SumUp-callback (via App.jsx)
   useEffect(() => {
     if (paymentStatus === 'success') onSuccess()
     if (paymentStatus === 'failed')  setWaiting(false)
   }, [paymentStatus, onSuccess])
 
   const openSumUp = () => {
+    const token = makeToken()
+    localStorage.setItem('pb_pay_token', token)
     setWaiting(true)
-    window.location.href = buildSumUpUrl(txId)
+    window.location.href = buildSumUpUrl(txId, token)
   }
 
   return (

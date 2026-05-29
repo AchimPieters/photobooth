@@ -4,27 +4,35 @@ import CameraScreen   from './screens/CameraScreen'
 import PreviewScreen  from './screens/PreviewScreen'
 import PaymentScreen  from './screens/PaymentScreen'
 import DoneScreen     from './screens/DoneScreen'
+import AdminScreen    from './screens/AdminScreen'
 
-// Lees payment-callback uit URL (SumUp stuurt terug naar deze pagina)
 function readPaymentResult() {
   const params = new URLSearchParams(window.location.search)
   const status = params.get('payment')
-  if (status) {
-    // Verwijder de query-string zonder page reload
-    window.history.replaceState({}, '', window.location.pathname)
-    return status   // 'success' | 'fail'
+  if (!status) return null
+
+  window.history.replaceState({}, '', window.location.pathname)
+
+  if (status === 'success') {
+    const urlToken    = params.get('token')
+    const storedToken = localStorage.getItem('pb_pay_token')
+    localStorage.removeItem('pb_pay_token')
+    // Token moet overeenkomen om betaling te accepteren
+    if (!urlToken || !storedToken || urlToken !== storedToken) return 'fail'
+    return 'success'
   }
-  return null
+  return status
 }
 
 export default function App() {
-  const [screen,  setScreen]  = useState(() => {
+  const [screen,     setScreen]     = useState(() => {
     const result = readPaymentResult()
     if (result === 'success') return 'done'
     if (result === 'fail')    return 'payment'
     return 'welcome'
   })
-  const [session, setSession] = useState(null)
+  const [session,    setSession]    = useState(null)
+  const [showAdmin,  setShowAdmin]  = useState(false)
 
   const startSession = useCallback(() => {
     setSession({ photos: [], stripDataUrl: null, paymentStatus: 'pending' })
@@ -48,7 +56,6 @@ export default function App() {
 
   const onPaymentFail = useCallback(() => {
     setSession(s => ({ ...s, paymentStatus: 'failed' }))
-    // Blijf op payment-scherm
   }, [])
 
   const restart = useCallback(() => {
@@ -59,7 +66,7 @@ export default function App() {
   return (
     <>
       {screen === 'welcome' && (
-        <WelcomeScreen onStart={startSession} />
+        <WelcomeScreen onStart={startSession} onAdmin={() => setShowAdmin(true)} />
       )}
       {screen === 'camera' && (
         <CameraScreen onComplete={onPhotosComplete} onCancel={restart} />
@@ -93,6 +100,8 @@ export default function App() {
           <img src={session.stripDataUrl} alt="Fotostrip" />
         )}
       </div>
+
+      {showAdmin && <AdminScreen onClose={() => setShowAdmin(false)} />}
     </>
   )
 }
