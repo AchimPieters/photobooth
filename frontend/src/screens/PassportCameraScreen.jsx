@@ -5,7 +5,9 @@ const GUIDE_W_PCT = 65  // % van schermbreedte
 
 function cropToPassport(dataUrl) {
   return new Promise(resolve => {
+    if (!dataUrl) { resolve(null); return }
     const img = new Image()
+    img.onerror = () => resolve(null)
     img.onload = () => {
       const vw = img.width
       const vh = img.height
@@ -48,8 +50,8 @@ export default function PassportCameraScreen({ onComplete, onBack }) {
         const raw = takePhoto()
         setTimeout(async () => {
           setFlash(false)
-          if (raw) {
-            const passport = await cropToPassport(raw)
+          const passport = raw ? await cropToPassport(raw) : null
+          if (passport) {
             stopCamera()
             onComplete(passport)
           } else {

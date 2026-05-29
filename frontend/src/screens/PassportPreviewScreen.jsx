@@ -11,10 +11,17 @@ const CHECKS = [
 ]
 
 export default function PassportPreviewScreen({ photoDataUrl, onPay, onRetake }) {
-  const [checks, setChecks] = useState(() => Array(CHECKS.length).fill(false))
+  const [checks,   setChecks]   = useState(() => Array(CHECKS.length).fill(false))
+  const [paying,   setPaying]   = useState(false)
   const allChecked = checks.every(Boolean)
 
   const toggle = i => setChecks(c => c.map((v, j) => (j === i ? !v : v)))
+
+  const handlePay = async () => {
+    if (paying) return
+    setPaying(true)
+    try { await onPay() } finally { setPaying(false) }
+  }
 
   return (
     <div style={s.root}>
@@ -42,11 +49,11 @@ export default function PassportPreviewScreen({ photoDataUrl, onPay, onRetake })
       {/* Acties */}
       <div style={s.actions}>
         <button
-          style={{ ...s.payBtn, opacity: allChecked ? 1 : 0.35 }}
-          disabled={!allChecked}
-          onClick={onPay}
+          style={{ ...s.payBtn, opacity: (allChecked && !paying) ? 1 : 0.35 }}
+          disabled={!allChecked || paying}
+          onClick={handlePay}
         >
-          Betalen &amp; printen — €{config.passportPrice.toFixed(2)}
+          {paying ? 'Bezig…' : `Betalen & printen — €${config.passportPrice.toFixed(2)}`}
         </button>
         <button style={s.retakeBtn} onClick={onRetake}>↩  Opnieuw maken</button>
       </div>

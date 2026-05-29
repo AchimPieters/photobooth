@@ -33,7 +33,7 @@ export default function App() {
   const [screen,    setScreen]    = useState(() => {
     const result = readPaymentResult()
     if (result === 'success') return 'done'
-    if (result === 'fail')    return 'payment'
+    // 'fail' zonder actieve sessie: stuur terug naar welcome (session is null bij herstart)
     return 'welcome'
   })
   const [session,    setSession]   = useState(null)
