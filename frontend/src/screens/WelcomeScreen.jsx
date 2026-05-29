@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import config from '../utils/config'
 
+const BASE = import.meta.env.BASE_URL   // '/photobooth/'
+
 export default function WelcomeScreen({ onStartStrip, onStartPassport, onAdmin, licensed, licenseInfo }) {
   const [pulse, setPulse] = useState(false)
   const tapCount = useRef(0)
@@ -28,13 +30,21 @@ export default function WelcomeScreen({ onStartStrip, onStartPassport, onAdmin, 
     <div style={s.root}>
       {/* Logo */}
       <div style={s.top}>
-        <div
+        {/* Icoon — pulserende animatie, 5× tikken opent admin */}
+        <img
+          src={`${BASE}icons/icon.svg`}
+          alt="Photobooth icon"
           style={{ ...s.icon, transform: `scale(${pulse ? 1.06 : 1.0})` }}
           onClick={handleIconTap}
-        >
-          ⦿
-        </div>
-        <h1 style={s.title}>Photobooth</h1>
+          draggable={false}
+        />
+        {/* Volledige logo met tekst */}
+        <img
+          src={`${BASE}logo.svg`}
+          alt="Photobooth"
+          style={s.logo}
+          draggable={false}
+        />
       </div>
 
       {/* Licentie-status */}
@@ -73,15 +83,21 @@ const s = {
   },
   top: {
     display: 'flex', flexDirection: 'column',
-    alignItems: 'center', gap: 12,
+    alignItems: 'center', gap: 20,
   },
   icon: {
-    fontSize: 80, lineHeight: 1,
+    width: 110, height: 110,
     transition: 'transform 1.8s ease-in-out',
     cursor: 'default', userSelect: 'none',
+    borderRadius: 24,
+    boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
   },
-  title: {
-    fontSize: 56, fontWeight: 700, color: '#fff', letterSpacing: -1, margin: 0,
+  logo: {
+    width: '72%', maxWidth: 420,
+    // SVG tekst is donker — filter geeft wit
+    filter: 'brightness(0) invert(1)',
+    userSelect: 'none',
+    pointerEvents: 'none',
   },
   modes: {
     width: '100%', padding: '0 40px',
@@ -99,20 +115,15 @@ const s = {
     background: 'rgba(233,69,96,0.08)',
     border: '1.5px solid rgba(233,69,96,0.25)',
   },
-  modeIcon: { fontSize: 44, lineHeight: 1, marginBottom: 4 },
+  modeIcon:  { fontSize: 44, lineHeight: 1, marginBottom: 4 },
   modeTitle: { color: '#fff', fontSize: 30, fontWeight: 700 },
-  modeSub: { color: 'rgba(255,255,255,0.55)', fontSize: 17, fontWeight: 400 },
-  modePrice: {
-    marginTop: 8, color: '#e94560',
-    fontSize: 20, fontWeight: 700,
-  },
+  modeSub:   { color: 'rgba(255,255,255,0.55)', fontSize: 17, fontWeight: 400 },
+  modePrice: { marginTop: 8, color: '#e94560', fontSize: 20, fontWeight: 700 },
   demoBadge: {
     background: 'rgba(233,69,96,0.12)', color: '#e94560',
     fontSize: 13, fontWeight: 700, letterSpacing: 0.5,
     padding: '8px 18px', borderRadius: 20,
     border: '1px solid rgba(233,69,96,0.3)',
   },
-  licBadge: {
-    color: 'rgba(39,174,96,0.8)', fontSize: 14, fontWeight: 600,
-  },
+  licBadge: { color: 'rgba(39,174,96,0.8)', fontSize: 14, fontWeight: 600 },
 }
