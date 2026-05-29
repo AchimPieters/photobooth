@@ -49,7 +49,12 @@ export default function App() {
     })
   }, [])
 
-  useEffect(() => { refreshLicense() }, [refreshLicense])
+  useEffect(() => {
+    refreshLicense()
+    // Hercheck elke minuut zodat een verlopen licentie tijdens een sessie wordt herkend
+    const id = setInterval(refreshLicense, 60_000)
+    return () => clearInterval(id)
+  }, [refreshLicense])
   useEffect(() => { sessionRef.current = session }, [session])
 
   // — Fotostrip flow —

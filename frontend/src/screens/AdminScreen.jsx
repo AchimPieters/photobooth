@@ -54,11 +54,16 @@ function LicenseSection() {
   const [licMsg,     setLicMsg]   = useState(null)  // { ok, text }
 
   useEffect(() => {
-    getLicenseInfo().then(info => { setLicInfo(info); setLoading(false) })
+    let cancelled = false
+    getLicenseInfo().then(info => {
+      if (!cancelled) { setLicInfo(info); setLoading(false) }
+    })
+    return () => { cancelled = true }
   }, [])
 
   const activate = async () => {
-    const raw = licInput.trim()
+    // Verwijder ALLE witruimte (inclusief interne newlines bij copy-paste uit GitHub Actions)
+    const raw = licInput.replace(/\s+/g, '')
     if (!raw) {
       removeLicense(); setLicInfo(null)
       setLicMsg({ ok: true, text: 'Licentie verwijderd' }); return

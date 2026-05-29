@@ -44,7 +44,10 @@ export async function verifyAndParseLicense(raw) {
     )
     if (!valid) return null
 
-    return JSON.parse(new TextDecoder().decode(payloadBytes))
+    const payload = JSON.parse(new TextDecoder().decode(payloadBytes))
+    // Onbekende versie wordt geweigerd zodat toekomstige sleutelrotatie veilig werkt
+    if (payload.v !== 1) return null
+    return payload
   } catch {
     return null
   }
