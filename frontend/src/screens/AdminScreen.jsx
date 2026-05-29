@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react'
 import { getSettings, saveSettings, verifyPassword, hashPassword } from '../utils/settings'
 import { getConfig } from '../utils/config'
 import { getLicenseInfo, verifyAndParseLicense, saveLicense, removeLicense, getRawLicense } from '../utils/license'
-import { generateLicense } from '../utils/licenseGen'
 
 // ─── LOGIN ───────────────────────────────────────────────────────────────────
 
@@ -49,41 +48,28 @@ function LoginScreen({ onSuccess, onClose }) {
 // ─── LICENTIE-SECTIE ─────────────────────────────────────────────────────────
 
 function LicenseSection() {
-  const [licInfo,      setLicInfo]      = useState(null)
-  const [licLoading,   setLicLoading]   = useState(true)
-  const [licInput,     setLicInput]     = useState(getRawLicense())
-  const [licMsg,       setLicMsg]       = useState(null)   // { ok, text }
-
-  const [genName,      setGenName]      = useState('')
-  const [genExpiry,    setGenExpiry]    = useState(() => {
-    const d = new Date(); d.setFullYear(d.getFullYear() + 1)
-    return d.toISOString().slice(0, 10)
-  })
-  const [genResult,    setGenResult]    = useState('')
-  const [genMsg,       setGenMsg]       = useState(null)
-  const [genBusy,      setGenBusy]      = useState(false)
-  const [copied,       setCopied]       = useState(false)
-
-  const [privInput,    setPrivInput]    = useState('')
-  const [privMsg,      setPrivMsg]      = useState(null)
-  const [showPrivForm, setShowPrivForm] = useState(false)
-
-  const hasPrivKey = Boolean(getSettings().licensePrivateKey)
+  const [licInfo,    setLicInfo]  = useState(null)
+  const [licLoading, setLoading]  = useState(true)
+  const [licInput,   setLicInput] = useState(getRawLicense())
+  const [licMsg,     setLicMsg]   = useState(null)  // { ok, text }
 
   useEffect(() => {
-    getLicenseInfo().then(info => { setLicInfo(info); setLicLoading(false) })
+    getLicenseInfo().then(info => { setLicInfo(info); setLoading(false) })
   }, [])
 
   const activate = async () => {
     const raw = licInput.trim()
-    if (!raw) { removeLicense(); setLicInfo(null); setLicMsg({ ok: true, text: 'Licentie verwijderd' }); return }
+    if (!raw) {
+      removeLicense(); setLicInfo(null)
+      setLicMsg({ ok: true, text: 'Licentie verwijderd' }); return
+    }
     const payload = await verifyAndParseLicense(raw)
     if (!payload) { setLicMsg({ ok: false, text: 'Ongeldige licentiecode — controleer op typefouten' }); return }
     if (new Date(payload.expires) < new Date()) { setLicMsg({ ok: false, text: `Licentie verlopen op ${payload.expires}` }); return }
     saveLicense(raw)
     const info = await getLicenseInfo()
     setLicInfo(info)
-    setLicMsg({ ok: true, text: `Licentie geactiveerd voor ${payload.licensee}` })
+    setLicMsg({ ok: true, text: `Geactiveerd voor ${payload.licensee} — geldig t/m ${payload.expires}` })
   }
 
   const deactivate = () => {
@@ -91,67 +77,35 @@ function LicenseSection() {
     setLicMsg({ ok: true, text: 'Licentie verwijderd' })
   }
 
-  const generate = async () => {
-    if (!genName.trim()) { setGenMsg({ ok: false, text: 'Naam is verplicht' }); return }
-    const privRaw = getSettings().licensePrivateKey
-    if (!privRaw) { setGenMsg({ ok: false, text: 'Geen privésleutel geconfigureerd' }); return }
-    setGenBusy(true)
-    try {
-      const code = await generateLicense({ licensee: genName.trim(), expires: genExpiry, privateKeyJwk: JSON.parse(privRaw) })
-      setGenResult(code)
-      setGenMsg(null)
-    } catch (e) {
-      setGenMsg({ ok: false, text: 'Genereren mislukt: ' + e.message })
-    } finally {
-      setGenBusy(false)
-    }
-  }
+  if (licLoading) return null
 
-  const copyCode = () => {
-    navigator.clipboard?.writeText(genResult)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const importPrivKey = async () => {
-    try {
-      const jwk = JSON.parse(privInput.trim())
-      await crypto.subtle.importKey('jwk', jwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign'])
-      saveSettings({ licensePrivateKey: privInput.trim() })
-      setPrivMsg({ ok: true, text: 'Privésleutel opgeslagen' })
-      setPrivInput('')
-      setShowPrivForm(false)
-    } catch {
-      setPrivMsg({ ok: false, text: 'Ongeldige sleutel — controleer het JSON-formaat' })
-    }
-  }
-
-  const statusBadge = licLoading ? null
-    : licInfo?.valid
-      ? { bg: 'rgba(39,174,96,0.15)', color: '#27ae60', text: `✓  ${licInfo.licensee} — geldig t/m ${licInfo.expires}` }
-      : licInfo?.reason === 'expired'
-        ? { bg: 'rgba(233,69,96,0.1)', color: '#e94560', text: `Verlopen op ${licInfo.expires}` }
-        : { bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.45)', text: 'Geen actieve licentie — DEMO modus' }
+  const badge = licInfo?.valid
+    ? { bg: 'rgba(39,174,96,0.15)',    color: '#27ae60', text: `✓  ${licInfo.licensee} — geldig t/m ${licInfo.expires}` }
+    : licInfo?.reason === 'expired'
+      ? { bg: 'rgba(233,69,96,0.1)',   color: '#e94560', text: `Verlopen op ${licInfo.expires}` }
+      : { bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.45)', text: 'Geen actieve licentie — DEMO modus' }
 
   return (
     <>
-      {/* Status */}
-      {statusBadge && (
-        <div style={{ ...s.badge, background: statusBadge.bg, color: statusBadge.color }}>
-          {statusBadge.text}
-        </div>
-      )}
+      <div style={{ ...s.badge, background: badge.bg, color: badge.color }}>
+        {badge.text}
+      </div>
 
-      {/* Activeren */}
       <Section title="🪪 Licentie activeren">
-        <Field label="Licentiecode (plakken of typen)">
+        <Field label="Licentiecode (ontvangen van de licentie-uitgever)">
           <textarea
-            style={{ ...s.input, minHeight: 80, resize: 'vertical', fontFamily: 'monospace', fontSize: 13 }}
-            value={licInput} onChange={e => { setLicInput(e.target.value); setLicMsg(null) }}
-            placeholder="pb_eyJ..." spellCheck={false}
+            style={{ ...s.input, minHeight: 88, resize: 'vertical', fontFamily: 'monospace', fontSize: 13 }}
+            value={licInput}
+            onChange={e => { setLicInput(e.target.value); setLicMsg(null) }}
+            placeholder="pb_eyJ..."
+            spellCheck={false}
           />
         </Field>
-        {licMsg && <p style={{ ...s.errMsg, color: licMsg.ok ? '#27ae60' : '#e94560', marginBottom: 10 }}>{licMsg.text}</p>}
+        {licMsg && (
+          <p style={{ ...s.errMsg, color: licMsg.ok ? '#27ae60' : '#e94560', marginBottom: 10 }}>
+            {licMsg.text}
+          </p>
+        )}
         <div style={{ display: 'flex', gap: 10 }}>
           <button style={{ ...s.smBtn, flex: 1 }} onClick={activate}>Activeer</button>
           {licInfo?.valid && (
@@ -160,65 +114,6 @@ function LicenseSection() {
             </button>
           )}
         </div>
-      </Section>
-
-      {/* Genereren (alleen als privésleutel aanwezig) */}
-      {hasPrivKey && (
-        <Section title="⚙️ Licentie genereren">
-          <Field label="Naam licentiehouder">
-            <input style={s.input} type="text" value={genName}
-              onChange={e => { setGenName(e.target.value); setGenMsg(null) }}
-              placeholder="Studio Naam" />
-          </Field>
-          <Field label="Vervaldatum">
-            <input style={s.input} type="date" value={genExpiry}
-              onChange={e => setGenExpiry(e.target.value)} />
-          </Field>
-          {genMsg && <p style={{ ...s.errMsg, color: genMsg.ok ? '#27ae60' : '#e94560', marginBottom: 10 }}>{genMsg.text}</p>}
-          <button style={s.smBtn} onClick={generate} disabled={genBusy}>
-            {genBusy ? 'Genereren…' : 'Genereer licentiecode'}
-          </button>
-          {genResult && (
-            <div style={{ marginTop: 14 }}>
-              <p style={{ ...s.label, marginBottom: 6 }}>Licentiecode — stuur dit naar de klant:</p>
-              <div style={s.codeBox}>{genResult}</div>
-              <button style={{ ...s.smBtn, marginTop: 8, background: copied ? 'rgba(39,174,96,0.2)' : undefined }} onClick={copyCode}>
-                {copied ? '✓  Gekopieerd!' : 'Kopieer naar klembord'}
-              </button>
-            </div>
-          )}
-        </Section>
-      )}
-
-      {/* Privésleutel beheer */}
-      <Section title="🔐 Privésleutel (alleen voor licentie-uitgever)">
-        <p style={{ ...s.label, marginBottom: 10 }}>
-          Status: {hasPrivKey ? '✓ Geconfigureerd' : 'Niet ingesteld'}
-        </p>
-        {privMsg && <p style={{ ...s.errMsg, color: privMsg.ok ? '#27ae60' : '#e94560', marginBottom: 10 }}>{privMsg.text}</p>}
-        {!showPrivForm ? (
-          <button style={s.smBtn} onClick={() => setShowPrivForm(true)}>
-            {hasPrivKey ? 'Privésleutel vervangen' : 'Privésleutel importeren'}
-          </button>
-        ) : (
-          <>
-            <Field label="Privésleutel (JWK JSON)">
-              <textarea
-                style={{ ...s.input, minHeight: 100, resize: 'vertical', fontFamily: 'monospace', fontSize: 12 }}
-                value={privInput} onChange={e => { setPrivInput(e.target.value); setPrivMsg(null) }}
-                placeholder='{"kty":"EC","crv":"P-256","d":"..."}'
-                spellCheck={false}
-              />
-            </Field>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button style={{ ...s.smBtn, flex: 1 }} onClick={importPrivKey}>Importeer</button>
-              <button style={{ ...s.smBtn, background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }}
-                onClick={() => { setShowPrivForm(false); setPrivInput('') }}>
-                Annuleer
-              </button>
-            </div>
-          </>
-        )}
       </Section>
     </>
   )

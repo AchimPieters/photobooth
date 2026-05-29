@@ -10,9 +10,8 @@ const DEFAULTS = {
   autoRestartSecs:   15,
   stripFooter:       'Photobooth ✦ 2026',
   stripBg:           '#000000',
-  baseUrl:            '',
-  passwordHash:       '',
-  licensePrivateKey:  '', // JWK JSON — alleen op Achims device
+  baseUrl:      '',
+  passwordHash: '',
 }
 
 export function getSettings() {
