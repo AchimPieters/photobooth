@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
 import WelcomeScreen              from './screens/WelcomeScreen'
 import CameraScreen               from './screens/CameraScreen'
 import PreviewScreen              from './screens/PreviewScreen'
@@ -37,6 +37,7 @@ export default function App() {
     return 'welcome'
   })
   const [session,    setSession]   = useState(null)
+  const sessionRef = useRef(null)
   const [showAdmin,  setShowAdmin] = useState(false)
   const [licensed,   setLicensed]  = useState(false)
   const [licenseInfo, setLicInfo]  = useState(null)
@@ -49,6 +50,7 @@ export default function App() {
   }, [])
 
   useEffect(() => { refreshLicense() }, [refreshLicense])
+  useEffect(() => { sessionRef.current = session }, [session])
 
   // — Fotostrip flow —
   const startStrip = useCallback(() => {
@@ -82,10 +84,10 @@ export default function App() {
   }, [])
 
   const onPassportPay = useCallback(async () => {
-    const stripDataUrl = await buildPassportStrip(session?.photo)
+    const stripDataUrl = await buildPassportStrip(sessionRef.current?.photo)
     setSession(s => ({ ...s, stripDataUrl }))
     setScreen('payment')
-  }, [session])
+  }, [])
 
   // — Gedeeld —
   const onPaymentSuccess = useCallback(() => {

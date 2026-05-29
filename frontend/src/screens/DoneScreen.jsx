@@ -2,16 +2,18 @@ import React, { useEffect, useState, useRef } from 'react'
 import config from '../utils/config'
 
 export default function DoneScreen({ stripDataUrl, onRestart, licensed }) {
-  const [secs, setSecs] = useState(config.autoRestartSecs)
+  const [secs, setSecs] = useState(0)
   const timerRef = useRef(null)
 
   useEffect(() => {
-    // Auto-print alleen met geldige licentie
+    // Lees config vers bij mount zodat admin-wijzigingen direct effect hebben
+    const total = config.autoRestartSecs
+    setSecs(total)
+
     if (stripDataUrl && licensed) {
       setTimeout(() => window.print(), 800)
     }
 
-    // Aftellen voor auto-restart
     timerRef.current = setInterval(() => {
       setSecs(s => {
         if (s <= 1) { clearInterval(timerRef.current); onRestart(); return 0 }
@@ -19,7 +21,7 @@ export default function DoneScreen({ stripDataUrl, onRestart, licensed }) {
       })
     }, 1000)
     return () => clearInterval(timerRef.current)
-  }, [stripDataUrl, onRestart])
+  }, [stripDataUrl, licensed, onRestart])
 
   return (
     <div style={s.root}>
