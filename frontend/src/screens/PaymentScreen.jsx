@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import config from '../utils/config'
 
-function buildSumUpUrl(txId, token) {
+function buildSumUpUrl(txId, token, price) {
   const params = new URLSearchParams({
     'affiliate-key':       config.sumupAffiliateKey,
-    amount:                config.price.toFixed(2),
+    amount:                price.toFixed(2),
     currency:              config.currency,
     title:                 'Fotostrip',
     'foreign-tx-id':       txId,
@@ -19,7 +19,8 @@ function makeToken() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
-export default function PaymentScreen({ stripDataUrl, paymentStatus, onSuccess, onFail, onBack }) {
+export default function PaymentScreen({ stripDataUrl, paymentStatus, onSuccess, onFail, onBack, price: priceProp }) {
+  const price     = priceProp ?? config.price
   const [txId]    = useState(() => `pb-${Date.now()}`)
   const [waiting, setWaiting] = useState(false)
 
@@ -32,7 +33,7 @@ export default function PaymentScreen({ stripDataUrl, paymentStatus, onSuccess, 
     const token = makeToken()
     localStorage.setItem('pb_pay_token', token)
     setWaiting(true)
-    window.location.href = buildSumUpUrl(txId, token)
+    window.location.href = buildSumUpUrl(txId, token, price)
   }
 
   return (
@@ -40,7 +41,7 @@ export default function PaymentScreen({ stripDataUrl, paymentStatus, onSuccess, 
       <div style={s.center}>
         <span style={s.icon}>💳</span>
         <h2 style={s.title}>Betaling</h2>
-        <p style={s.amount}>€{config.price.toFixed(2)}</p>
+        <p style={s.amount}>€{price.toFixed(2)}</p>
 
         {waiting && (
           <p style={s.waiting}>Wachten op bevestiging…</p>

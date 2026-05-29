@@ -1,16 +1,17 @@
 const KEY = 'pb_settings'
 
 const DEFAULTS = {
-  price: Number(import.meta.env.VITE_PRICE ?? 3.00),
-  currency: 'EUR',
+  price:             Number(import.meta.env.VITE_PRICE ?? 3.00),
+  passportPrice:     Number(import.meta.env.VITE_PASSPORT_PRICE ?? 10.00),
+  currency:          'EUR',
   sumupAffiliateKey: '',
-  totalPhotos: 4,
-  countdownSecs: 3,
-  autoRestartSecs: 15,
-  stripFooter: 'Photobooth ✦ 2026',
-  stripBg: '#000000',
-  baseUrl: '',
-  passwordHash: '',
+  totalPhotos:       4,
+  countdownSecs:     3,
+  autoRestartSecs:   15,
+  stripFooter:       'Photobooth ✦ 2026',
+  stripBg:           '#000000',
+  baseUrl:           '',
+  passwordHash:      '',
 }
 
 export function getSettings() {

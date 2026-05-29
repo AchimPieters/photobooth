@@ -19,6 +19,7 @@ export default function AdminScreen({ onClose }) {
     return {
       sumupAffiliateKey: c.sumupAffiliateKey,
       price:             String(c.price),
+      passportPrice:     String(c.passportPrice),
       currency:          c.currency,
       baseUrl:           c.baseUrl,
       totalPhotos:       String(c.totalPhotos),
@@ -52,6 +53,7 @@ export default function AdminScreen({ onClose }) {
     saveSettings({
       sumupAffiliateKey: form.sumupAffiliateKey.trim(),
       price:             Number(form.price) || 0,
+      passportPrice:     Number(form.passportPrice) || 0,
       currency:          form.currency.trim().toUpperCase() || 'EUR',
       baseUrl:           form.baseUrl.trim(),
       totalPhotos:       Math.max(1, Math.min(8, parseInt(form.totalPhotos) || 4)),
@@ -113,9 +115,13 @@ export default function AdminScreen({ onClose }) {
               onChange={e => set('sumupAffiliateKey', e.target.value)}
               placeholder="Jouw SumUp affiliate key" autoComplete="off" />
           </Field>
-          <Field label="Prijs (€)">
+          <Field label="Prijs fotostrip (€)">
             <input style={s.input} type="number" step="0.01" min="0"
               value={form.price} onChange={e => set('price', e.target.value)} />
+          </Field>
+          <Field label="Prijs pasfoto's — 4 stuks (€)">
+            <input style={s.input} type="number" step="0.01" min="0"
+              value={form.passportPrice} onChange={e => set('passportPrice', e.target.value)} />
           </Field>
           <Field label="Valuta">
             <input style={s.input} type="text" maxLength={3}

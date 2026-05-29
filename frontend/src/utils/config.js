@@ -4,6 +4,7 @@ export function getConfig() {
   const s = getSettings()
   return {
     price:             s.price,
+    passportPrice:     s.passportPrice,
     currency:          s.currency,
     sumupAffiliateKey: s.sumupAffiliateKey || (import.meta.env.VITE_SUMUP_KEY ?? ''),
     totalPhotos:       s.totalPhotos,
