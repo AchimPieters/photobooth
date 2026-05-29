@@ -30,7 +30,6 @@ export default function WelcomeScreen({ onStartStrip, onStartPassport, onAdmin, 
     <div style={s.root}>
       {/* Logo */}
       <div style={s.top}>
-        {/* Icoon — pulserende animatie, 5× tikken opent admin */}
         <img
           src={`${BASE}icons/icon.svg`}
           alt="Photobooth icon"
@@ -38,13 +37,7 @@ export default function WelcomeScreen({ onStartStrip, onStartPassport, onAdmin, 
           onClick={handleIconTap}
           draggable={false}
         />
-        {/* Volledige logo met tekst */}
-        <img
-          src={`${BASE}logo.svg`}
-          alt="Photobooth"
-          style={s.logo}
-          draggable={false}
-        />
+        <h1 style={s.title}>Photobooth</h1>
       </div>
 
       {/* Licentie-status */}
@@ -92,12 +85,8 @@ const s = {
     borderRadius: 24,
     boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
   },
-  logo: {
-    width: '72%', maxWidth: 420,
-    // SVG tekst is donker — filter geeft wit
-    filter: 'brightness(0) invert(1)',
-    userSelect: 'none',
-    pointerEvents: 'none',
+  title: {
+    fontSize: 56, fontWeight: 700, color: '#fff', letterSpacing: -1, margin: 0,
   },
   modes: {
     width: '100%', padding: '0 40px',
