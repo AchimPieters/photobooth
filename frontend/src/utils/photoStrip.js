@@ -12,6 +12,12 @@
 // Daarbuiten (tot de fotorand = max-kader) mag de template gerust vallen.
 export const SAFE_ZONE = 0.7
 
+// Print-resolutie waarmee de ontwerpgids wordt getagd. De pixelafmetingen
+// blijven gelijk aan de strip (zodat de template 1-op-1 over de print valt);
+// alleen de DPI-metadata (pHYs-chunk) wordt op 300 gezet, zodat ontwerptools
+// het bestand openen op de juiste fysieke maat @ 300 dpi.
+export const GUIDE_DPI = 300
+
 // Berekent de exacte stripafmetingen + de positie van elke fotocel en de
 // voettekst-zone. Gedeeld door buildStrip en buildTemplateGuide zodat een
 // aangeleverde template altijd 1-op-1 over de print past.
@@ -181,11 +187,13 @@ export function buildTemplateGuide(options = {}) {
     ctx.textBaseline = 'middle'
     ctx.fillText('MIN — vrijhouden', cell.x + cell.w / 2, cell.y + cell.h / 2)
 
+    const cellMmW = Math.round((cell.w / GUIDE_DPI) * 25.4)
+    const cellMmH = Math.round((cell.h / GUIDE_DPI) * 25.4)
     ctx.fillStyle = '#5f6368'
     ctx.font = '14px sans-serif'
     ctx.textAlign = 'left'
     ctx.textBaseline = 'top'
-    ctx.fillText(`foto ${i + 1}`, cell.x + insetW + 4, cell.y + insetH + 4)
+    ctx.fillText(`foto ${i + 1} — ${cellMmW} × ${cellMmH} mm`, cell.x + insetW + 4, cell.y + insetH + 4)
   })
 
   // Voettekst-zone.
@@ -201,7 +209,83 @@ export function buildTemplateGuide(options = {}) {
   ctx.textBaseline = 'middle'
   ctx.fillText('Voettekst-zone', dims.footer.x + dims.footer.w / 2, dims.footer.y + dims.footer.h / 2)
 
-  return canvas.toDataURL('image/png')
+  // Afmetingen (px / mm / inch) + DPI op de gids zelf, zodat de ontwerper de
+  // exacte maat ziet. mm = px / dpi × 25.4.
+  const mmW = Math.round((dims.width / GUIDE_DPI) * 25.4)
+  const mmH = Math.round((dims.height / GUIDE_DPI) * 25.4)
+  const inW = (dims.width / GUIDE_DPI).toFixed(2)
+  const inH = (dims.height / GUIDE_DPI).toFixed(2)
+  ctx.fillStyle = '#e0245e'
+  ctx.font = 'bold 16px sans-serif'
+  ctx.textAlign = 'right'
+  ctx.textBaseline = 'top'
+  ctx.fillText(`${dims.width} × ${dims.height} px @ ${GUIDE_DPI} dpi`, dims.width - 8, 8)
+  ctx.fillText(`${mmW} × ${mmH} mm`, dims.width - 8, 28)
+  ctx.fillText(`${inW}" × ${inH}"`, dims.width - 8, 48)
+
+  return injectDpi(canvas.toDataURL('image/png'), GUIDE_DPI)
+}
+
+// Voegt een pHYs-chunk (fysieke pixelafmetingen) toe aan een PNG-data-URL,
+// zodat ontwerptools het bestand als <dpi> openen. Canvas.toDataURL zelf zet
+// geen DPI; de pixelinhoud blijft ongewijzigd.
+function injectDpi(dataUrl, dpi) {
+  try {
+    const bytes = dataUrlToBytes(dataUrl)
+    const ppm = Math.round(dpi / 0.0254) // pixels per meter
+
+    // pHYs: length(4) + type(4) + data(9) + crc(4)
+    const chunk = new Uint8Array(21)
+    const dv = new DataView(chunk.buffer)
+    dv.setUint32(0, 9)            // data-lengte
+    chunk[4] = 0x70; chunk[5] = 0x48; chunk[6] = 0x59; chunk[7] = 0x73 // "pHYs"
+    dv.setUint32(8, ppm)          // X pixels-per-meter
+    dv.setUint32(12, ppm)         // Y pixels-per-meter
+    chunk[16] = 1                 // eenheid = meter
+    dv.setUint32(17, crc32(chunk.subarray(4, 17))) // crc over type + data
+
+    // IHDR is altijd het eerste blok: 8 (signatuur) + 4+4+13+4 = 33.
+    const insertAt = 33
+    const out = new Uint8Array(bytes.length + chunk.length)
+    out.set(bytes.subarray(0, insertAt), 0)
+    out.set(chunk, insertAt)
+    out.set(bytes.subarray(insertAt), insertAt + chunk.length)
+    return bytesToDataUrl(out)
+  } catch {
+    return dataUrl // bij twijfel: gewone PNG i.p.v. crashen
+  }
+}
+
+function dataUrlToBytes(dataUrl) {
+  const bin = atob(dataUrl.split(',')[1])
+  const bytes = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  return bytes
+}
+
+function bytesToDataUrl(bytes) {
+  let bin = ''
+  const CHUNK = 0x8000 // in stukken, anders stack-overflow bij grote arrays
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK))
+  }
+  return 'data:image/png;base64,' + btoa(bin)
+}
+
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256)
+  for (let n = 0; n < 256; n++) {
+    let c = n
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1)
+    t[n] = c >>> 0
+  }
+  return t
+})()
+
+function crc32(bytes) {
+  let c = 0xFFFFFFFF
+  for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8)
+  return (c ^ 0xFFFFFFFF) >>> 0
 }
 
 function drawChecker(ctx, w, h) {

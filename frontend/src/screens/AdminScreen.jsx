@@ -14,7 +14,7 @@ const MAX_TEMPLATE_BYTES = 3.5 * 1024 * 1024
 const TPL = {
   nl: {
     title: 'Event-template (overlay)',
-    help: 'PNG met transparantie. De template wordt bovenop de fotostrip geprint; decoratie/iconen mogen deels over de foto’s vallen. Houd het MIN-kader vrij (gezichten); tot het MAX-kader mag je vullen. Download eerst de gids voor de exacte afmetingen.',
+    help: 'PNG met transparantie, 300 dpi. De template wordt bovenop de fotostrip geprint; decoratie/iconen mogen deels over de foto’s vallen. Houd het MIN-kader vrij (gezichten); tot het MAX-kader mag je vullen. Download eerst de gids — die opent op exact de juiste maat @ 300 dpi.',
     guide: '⬇ Download ontwerpgids',
     upload: 'Template kiezen…',
     replace: 'Andere template kiezen…',
@@ -26,7 +26,7 @@ const TPL = {
   },
   en: {
     title: 'Event template (overlay)',
-    help: 'PNG with transparency. The template is printed on top of the photo strip; decorations/icons may partly overlap the photos. Keep the MIN frame clear (faces); you may fill up to the MAX frame. Download the guide first for the exact dimensions.',
+    help: 'PNG with transparency, 300 dpi. The template is printed on top of the photo strip; decorations/icons may partly overlap the photos. Keep the MIN frame clear (faces); you may fill up to the MAX frame. Download the guide first — it opens at the exact size @ 300 dpi.',
     guide: '⬇ Download design guide',
     upload: 'Choose template…',
     replace: 'Choose another template…',
@@ -234,7 +234,7 @@ export default function AdminScreen({ onClose }) {
     })
     const a = document.createElement('a')
     a.href = url
-    a.download = 'photobooth-template-gids.png'
+    a.download = 'photobooth-template-gids-300dpi.png'
     a.click()
   }
 
