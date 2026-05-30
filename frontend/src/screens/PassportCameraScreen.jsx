@@ -40,22 +40,25 @@ function cropToPassport(dataUrl, guide) {
       const overflowY   = (displayH - sh) / 2
 
       // Gids → videopixels
-      const cropW = Math.round(gW * scaleFactor)
-      const cropH = Math.round(gH * scaleFactor)
-      // Horizontaal: gids is gecentreerd, na mirror nog steeds gecentreerd
+      let cropW = Math.round(gW * scaleFactor)
+      let cropH = Math.round(gH * scaleFactor)
       const cropX = Math.round((vw - cropW) / 2)
-      const cropY = Math.round((gY + Math.max(0, overflowY)) * scaleFactor)
+      const cropY = Math.max(0, Math.round((gY + Math.max(0, overflowY)) * scaleFactor))
 
-      const safeX = Math.max(0, cropX)
-      const safeY = Math.max(0, cropY)
-      const safeW = Math.min(cropW, vw - safeX)
-      const safeH = Math.min(cropH, vh - safeY)
+      // Klem binnen videogrenzen met behoud van 35:45 verhouding
+      const maxH = vh - cropY
+      const maxW = vw - Math.max(0, cropX)
+      if (cropH > maxH) { cropH = maxH; cropW = Math.round(cropH * 35 / 45) }
+      if (cropW > maxW) { cropW = maxW; cropH = Math.round(cropW * 45 / 35) }
+
+      const finalX = Math.max(0, Math.round((vw - cropW) / 2))
+      const finalY = cropY
 
       // Uitvoer op printresolutie (700×900 = 35×45mm op 20px/mm)
       const canvas = document.createElement('canvas')
       canvas.width  = 700
       canvas.height = 900
-      canvas.getContext('2d').drawImage(img, safeX, safeY, safeW, safeH, 0, 0, 700, 900)
+      canvas.getContext('2d').drawImage(img, finalX, finalY, cropW, cropH, 0, 0, 700, 900)
       resolve(canvas.toDataURL('image/jpeg', 0.95))
     }
     img.src = dataUrl
@@ -121,7 +124,6 @@ export default function PassportCameraScreen({ onComplete, onBack }) {
         <svg
           style={s.svg}
           viewBox={`0 0 ${sw} ${sh}`}
-          preserveAspectRatio="none"
         >
           <defs>
             {/* Masker: wit = donkere overlay; zwart = transparant venster */}
