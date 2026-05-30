@@ -60,7 +60,8 @@ export async function getLicenseInfo() {
   const payload = await verifyAndParseLicense(raw)
   if (!payload) return { valid: false, reason: 'invalid' }
 
-  const expired = new Date(payload.expires) < new Date()
+  // Verlopen aan het einde van de vervaldatum (23:59:59 UTC)
+  const expired = new Date(payload.expires + 'T23:59:59Z') < new Date()
   if (expired) return { valid: false, reason: 'expired', ...payload }
 
   return { valid: true, ...payload }

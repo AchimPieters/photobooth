@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import config from '../utils/config'
+import { useLang } from '../context/LangContext'
+import { t } from '../utils/i18n'
 
 function buildSumUpUrl(txId, token, price) {
   const params = new URLSearchParams({
@@ -20,7 +22,8 @@ function makeToken() {
 }
 
 export default function PaymentScreen({ stripDataUrl, paymentStatus, onSuccess, onFail, onBack, price: priceProp, licensed }) {
-  const price     = priceProp ?? config.price
+  const lang  = useLang()
+  const price = priceProp ?? config.price
   const [txId]    = useState(() => `pb-${Date.now()}`)
   const [waiting, setWaiting] = useState(false)
 
@@ -40,20 +43,20 @@ export default function PaymentScreen({ stripDataUrl, paymentStatus, onSuccess, 
     <div style={s.root}>
       <div style={s.center}>
         <span style={s.icon}>💳</span>
-        <h2 style={s.title}>Betaling</h2>
+        <h2 style={s.title}>{t('pay.title', lang)}</h2>
         <p style={s.amount}>€{price.toFixed(2)}</p>
 
         {!licensed && (
           <div style={s.demoBox}>
-            <p style={s.demoText}>🔒  Betalen vereist een licentie</p>
-            <p style={s.demoSub}>Activeer een licentie via het admin panel (5× tik op het logo)</p>
+            <p style={s.demoText}>{t('pay.no_lic', lang)}</p>
+            <p style={s.demoSub}>{t('pay.no_lic_sub', lang)}</p>
           </div>
         )}
         {licensed && waiting && (
-          <p style={s.waiting}>Wachten op bevestiging…</p>
+          <p style={s.waiting}>{t('pay.waiting', lang)}</p>
         )}
         {licensed && paymentStatus === 'failed' && (
-          <p style={s.error}>⚠️  Betaling mislukt — probeer opnieuw</p>
+          <p style={s.error}>{t('pay.failed', lang)}</p>
         )}
       </div>
 
@@ -63,10 +66,10 @@ export default function PaymentScreen({ stripDataUrl, paymentStatus, onSuccess, 
           onClick={licensed ? openSumUp : undefined}
           disabled={!licensed}
         >
-          Betalen met SumUp  ↗
+          {t('pay.btn', lang)}
         </button>
         <button style={s.backBtn} onClick={onBack}>
-          ← Terug naar preview
+          {t('pay.back', lang)}
         </button>
       </div>
     </div>

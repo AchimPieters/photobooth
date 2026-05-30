@@ -1,7 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react'
 import config from '../utils/config'
+import { useLang } from '../context/LangContext'
+import { t } from '../utils/i18n'
 
 export default function DoneScreen({ stripDataUrl, onRestart, licensed }) {
+  const lang = useLang()
   const [secs, setSecs] = useState(0)
   const timerRef = useRef(null)
 
@@ -27,29 +30,29 @@ export default function DoneScreen({ stripDataUrl, onRestart, licensed }) {
     <div style={s.root}>
       <div style={s.top}>
         <div style={s.check}>✓</div>
-        <h2 style={s.title}>Betaald!</h2>
-        <p style={s.sub}>Je strip wordt nu geprint.</p>
+        <h2 style={s.title}>{t('done.title', lang)}</h2>
+        <p style={s.sub}>{t('done.sub', lang)}</p>
       </div>
 
       {stripDataUrl && (
-        <img src={stripDataUrl} alt="Fotostrip" style={s.strip} />
+        <img src={stripDataUrl} alt="strip" style={s.strip} />
       )}
 
       {!licensed && (
         <div style={s.demoBox}>
-          <p style={s.demoText}>🔒  Printen uitgeschakeld</p>
-          <p style={s.demoSub}>Activeer een licentie via het admin panel om te printen.</p>
+          <p style={s.demoText}>{t('done.no_print', lang)}</p>
+          <p style={s.demoSub}>{t('done.no_print_sub', lang)}</p>
         </div>
       )}
 
       <div style={s.actions}>
         {licensed && (
           <button style={s.reprintBtn} onClick={() => window.print()}>
-            🖨  Opnieuw printen
+            {t('done.reprint', lang)}
           </button>
         )}
         <button style={s.restartBtn} onClick={() => { clearInterval(timerRef.current); onRestart() }}>
-          ↩  Nieuwe sessie  ({secs}s)
+          {t('done.restart', lang, { secs })}
         </button>
       </div>
     </div>

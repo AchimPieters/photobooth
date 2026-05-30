@@ -1,5 +1,7 @@
 import React, { useEffect, useCallback, useState } from 'react'
 import { useCamera } from '../hooks/useCamera'
+import { useLang } from '../context/LangContext'
+import { t } from '../utils/i18n'
 
 const GUIDE_W_PCT = 65  // % van schermbreedte
 
@@ -29,6 +31,7 @@ function cropToPassport(dataUrl) {
 }
 
 export default function PassportCameraScreen({ onComplete, onBack }) {
+  const lang = useLang()
   const { videoRef, ready, error, startCamera, stopCamera, takePhoto } = useCamera()
   const [busy,      setBusy]      = useState(false)
   const [countdown, setCountdown] = useState(0)
@@ -98,9 +101,7 @@ export default function PassportCameraScreen({ onComplete, onBack }) {
       {error && (
         <div style={s.errorBox}>
           <p style={s.errorText}>
-            {error === 'camera-denied'
-              ? '📵  Geen camera-toegang\n\nGa naar Instellingen → Safari → Camera → Toestaan'
-              : '📷  Camera niet beschikbaar'}
+            {error === 'camera-denied' ? t('pc.no_access', lang) : t('pc.unavailable', lang)}
           </p>
         </div>
       )}
@@ -108,7 +109,7 @@ export default function PassportCameraScreen({ onComplete, onBack }) {
       {/* Topbalk */}
       <div style={s.topBar}>
         <button style={s.closeBtn} onClick={() => { stopCamera(); onBack() }}>←</button>
-        <span style={s.topLabel}>🪪  Pasfoto</span>
+        <span style={s.topLabel}>{t('pc.label', lang)}</span>
         <div style={{ width: 44 }} />
       </div>
 
@@ -116,8 +117,8 @@ export default function PassportCameraScreen({ onComplete, onBack }) {
       <div style={s.bottom}>
         <p style={s.hint}>
           {busy
-            ? (countdown > 0 ? '⚠️  Niet bewegen…' : 'Verwerken…')
-            : 'Positioneer je hoofd in het kader'}
+            ? (countdown > 0 ? t('pc.still', lang) : t('pc.processing', lang))
+            : t('pc.hint', lang)}
         </p>
         <button
           style={{ ...s.shutter, opacity: (busy || !ready) ? 0.35 : 1 }}

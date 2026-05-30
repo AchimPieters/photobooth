@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { getSettings, saveSettings, verifyPassword, hashPassword } from '../utils/settings'
 import { getConfig } from '../utils/config'
 import { getLicenseInfo, verifyAndParseLicense, saveLicense, removeLicense, getRawLicense } from '../utils/license'
+import { formatDate } from '../utils/i18n'
 
 // ─── LOGIN ───────────────────────────────────────────────────────────────────
 
@@ -74,7 +75,7 @@ function LicenseSection() {
     saveLicense(raw)
     const info = await getLicenseInfo()
     setLicInfo(info)
-    setLicMsg({ ok: true, text: `Geactiveerd voor ${payload.licensee} — geldig t/m ${payload.expires}` })
+    setLicMsg({ ok: true, text: `Geactiveerd voor ${payload.licensee} — geldig t/m ${formatDate(payload.expires)}` })
   }
 
   const deactivate = () => {
@@ -85,9 +86,9 @@ function LicenseSection() {
   if (licLoading) return null
 
   const badge = licInfo?.valid
-    ? { bg: 'rgba(39,174,96,0.15)',    color: '#27ae60', text: `✓  ${licInfo.licensee} — geldig t/m ${licInfo.expires}` }
+    ? { bg: 'rgba(39,174,96,0.15)',    color: '#27ae60', text: `✓  ${licInfo.licensee} — geldig t/m ${formatDate(licInfo.expires)}` }
     : licInfo?.reason === 'expired'
-      ? { bg: 'rgba(233,69,96,0.1)',   color: '#e94560', text: `Verlopen op ${licInfo.expires}` }
+      ? { bg: 'rgba(233,69,96,0.1)',   color: '#e94560', text: `Verlopen op ${formatDate(licInfo.expires)}` }
       : { bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.45)', text: 'Geen actieve licentie — DEMO modus' }
 
   return (

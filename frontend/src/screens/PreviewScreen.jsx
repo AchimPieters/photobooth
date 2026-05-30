@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { buildStrip } from '../utils/photoStrip'
 import config from '../utils/config'
+import { useLang } from '../context/LangContext'
+import { t } from '../utils/i18n'
 
 export default function PreviewScreen({ photos, onPay, onRetry }) {
+  const lang = useLang()
   const [stripUrl, setStripUrl]   = useState(null)
   const [loading,  setLoading]    = useState(true)
 
@@ -13,21 +16,21 @@ export default function PreviewScreen({ photos, onPay, onRetry }) {
 
   return (
     <div style={s.root}>
-      <h2 style={s.title}>Jouw fotostrip</h2>
+      <h2 style={s.title}>{t('prev.title', lang)}</h2>
 
       <div style={s.preview}>
         {loading
-          ? <div style={s.spinner}><div style={s.spin} />Wordt gemaakt…</div>
+          ? <div style={s.spinner}><div style={s.spin} />{t('prev.building', lang)}</div>
           : stripUrl && <img src={stripUrl} alt="Fotostrip" style={s.img} />
         }
       </div>
 
       <div style={s.actions}>
         <button style={s.payBtn} onClick={() => onPay(stripUrl)} disabled={loading}>
-          Betalen &amp; printen — €{config.price.toFixed(2)}
+          {t('prev.pay', lang, { price: config.price.toFixed(2) })}
         </button>
         <button style={s.retryBtn} onClick={onRetry}>
-          ↩  Opnieuw proberen
+          {t('prev.retry', lang)}
         </button>
       </div>
     </div>

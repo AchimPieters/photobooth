@@ -10,6 +10,8 @@ import DoneScreen                 from './screens/DoneScreen'
 import AdminScreen                from './screens/AdminScreen'
 import { buildPassportStrip }     from './utils/passportStrip'
 import { getLicenseInfo }         from './utils/license'
+import { getSettings, saveSettings } from './utils/settings'
+import { LangContext }            from './context/LangContext'
 import config                     from './utils/config'
 
 function readPaymentResult() {
@@ -41,6 +43,12 @@ export default function App() {
   const [showAdmin,  setShowAdmin] = useState(false)
   const [licensed,   setLicensed]  = useState(false)
   const [licenseInfo, setLicInfo]  = useState(null)
+  const [lang, setLang] = useState(() => getSettings().language || 'nl')
+
+  const changeLang = useCallback((l) => {
+    setLang(l)
+    saveSettings({ language: l })
+  }, [])
 
   const refreshLicense = useCallback(() => {
     getLicenseInfo().then(info => {
@@ -114,7 +122,7 @@ export default function App() {
     : config.price
 
   return (
-    <>
+    <LangContext.Provider value={lang}>
       {screen === 'welcome' && (
         <WelcomeScreen
           onStartStrip={startStrip}
@@ -122,6 +130,8 @@ export default function App() {
           onAdmin={() => setShowAdmin(true)}
           licensed={licensed}
           licenseInfo={licenseInfo}
+          lang={lang}
+          onChangeLang={changeLang}
         />
       )}
 
@@ -186,6 +196,6 @@ export default function App() {
       </div>
 
       {showAdmin && <AdminScreen onClose={() => { setShowAdmin(false); refreshLicense() }} />}
-    </>
+    </LangContext.Provider>
   )
 }

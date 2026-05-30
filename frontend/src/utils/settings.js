@@ -12,6 +12,7 @@ const DEFAULTS = {
   stripBg:           '#000000',
   baseUrl:      '',
   passwordHash: '',
+  language:     'nl',
 }
 
 export function getSettings() {

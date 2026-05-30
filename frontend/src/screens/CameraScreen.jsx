@@ -1,8 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { useCamera } from '../hooks/useCamera'
 import config from '../utils/config'
+import { useLang } from '../context/LangContext'
+import { t } from '../utils/i18n'
 
 export default function CameraScreen({ onComplete, onCancel }) {
+  const lang = useLang()
   const { videoRef, ready, error, startCamera, stopCamera, takePhoto } = useCamera()
   const [photos,    setPhotos]    = useState([])
   const [countdown, setCountdown] = useState(0)
@@ -63,9 +66,7 @@ export default function CameraScreen({ onComplete, onCancel }) {
       {error && (
         <div style={s.errorBox}>
           <p style={s.errorText}>
-            {error === 'camera-denied'
-              ? '📵  Geen camera-toegang\n\nGa naar Instellingen → Safari → Camera → Toestaan'
-              : '📷  Camera niet beschikbaar'}
+            {error === 'camera-denied' ? t('cam.no_access', lang) : t('cam.unavailable', lang)}
           </p>
         </div>
       )}
@@ -79,7 +80,7 @@ export default function CameraScreen({ onComplete, onCancel }) {
       <div style={s.topBar}>
         <button style={s.closeBtn} onClick={() => { stopCamera(); onCancel() }}>✕</button>
         <div style={s.progress}>
-          Foto {Math.min(photos.length + 1, config.totalPhotos)} van {config.totalPhotos}
+          {t('cam.progress', lang, { n: Math.min(photos.length + 1, config.totalPhotos), total: config.totalPhotos })}
         </div>
         <div style={{ width: 44 }} />
       </div>
@@ -107,7 +108,7 @@ export default function CameraScreen({ onComplete, onCancel }) {
           onClick={shoot}
           disabled={busy || !ready}
         />
-        <p style={s.hint}>{busy ? 'Lach! 😄' : 'Tik om een foto te maken'}</p>
+        <p style={s.hint}>{busy ? t('cam.smile', lang) : t('cam.hint', lang)}</p>
       </div>
     </div>
   )
