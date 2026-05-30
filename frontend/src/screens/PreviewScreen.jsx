@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { buildStrip } from '../utils/photoStrip'
+import { buildPrintSheet } from '../utils/photoStrip'
 import config from '../utils/config'
 import { useLang } from '../context/LangContext'
 import { t } from '../utils/i18n'
@@ -10,7 +10,7 @@ export default function PreviewScreen({ photos, onPay, onRetry }) {
   const [loading,  setLoading]    = useState(true)
 
   useEffect(() => {
-    buildStrip(photos, {
+    buildPrintSheet(photos, {
       footerText: config.stripFooter,
       bgColor: config.stripBg,
       overlay: config.stripTemplate || null,

@@ -21,5 +21,10 @@ HTMLCanvasElement.prototype.getContext = () => ({
   lineTo: () => {},
   quadraticCurveTo: () => {},
   closePath: () => {},
+  strokeRect: () => {},
+  setLineDash: () => {},
+  stroke: () => {},
+  arc: () => {},
+  globalAlpha: 1,
 })
 HTMLCanvasElement.prototype.toDataURL = () => 'data:image/jpeg;base64,mock'
