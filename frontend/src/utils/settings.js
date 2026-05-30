@@ -10,9 +10,10 @@ const DEFAULTS = {
   autoRestartSecs:   15,
   stripFooter:       'Photobooth ✦ 2026',
   stripBg:           '#000000',
-  baseUrl:      '',
-  passwordHash: '',
-  language:     'nl',
+  baseUrl:            '',
+  passwordHash:       '',
+  language:           'nl',
+  inactivityResetSecs: 30,
 }
 
 export function getSettings() {

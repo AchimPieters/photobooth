@@ -65,6 +65,32 @@ export default function App() {
   }, [refreshLicense])
   useEffect(() => { sessionRef.current = session }, [session])
 
+  // — Inactiviteits-reset —
+  // Op alle schermen behalve welcome (start), done (heeft eigen autoRestart)
+  // en payment (gebruiker wacht op SumUp-callback). Bij elke aanraking
+  // wordt de timer gereset; bij timeout terug naar welcome.
+  useEffect(() => {
+    if (showAdmin) return
+    if (screen === 'welcome' || screen === 'done' || screen === 'payment') return
+
+    const secs = Math.max(10, config.inactivityResetSecs || 30)
+    let timer = null
+    const reset = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        setSession(null)
+        setScreen('welcome')
+      }, secs * 1000)
+    }
+    reset()
+    const events = ['touchstart', 'mousedown', 'keydown']
+    events.forEach(e => window.addEventListener(e, reset, { passive: true }))
+    return () => {
+      clearTimeout(timer)
+      events.forEach(e => window.removeEventListener(e, reset))
+    }
+  }, [screen, showAdmin])
+
   // — Fotostrip flow —
   const startStrip = useCallback(() => {
     setSession({ mode: 'strip', photos: [], stripDataUrl: null, paymentStatus: 'pending' })

@@ -10,6 +10,7 @@ export function getConfig() {
     totalPhotos:       s.totalPhotos,
     countdownSecs:     s.countdownSecs,
     autoRestartSecs:   s.autoRestartSecs,
+    inactivityResetSecs: s.inactivityResetSecs,
     stripFooter:       s.stripFooter,
     stripBg:           s.stripBg,
     baseUrl:           s.baseUrl || (import.meta.env.VITE_BASE_URL ?? 'https://achimpieters.github.io/photobooth'),

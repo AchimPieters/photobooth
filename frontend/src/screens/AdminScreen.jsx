@@ -163,7 +163,8 @@ export default function AdminScreen({ onClose }) {
       baseUrl:           c.baseUrl,
       totalPhotos:       String(c.totalPhotos),
       countdownSecs:     String(c.countdownSecs),
-      autoRestartSecs:   String(c.autoRestartSecs),
+      autoRestartSecs:    String(c.autoRestartSecs),
+      inactivityResetSecs: String(c.inactivityResetSecs),
       stripFooter:       c.stripFooter,
       stripBg:           c.stripBg,
       _passwordHash:     s.passwordHash,
@@ -188,7 +189,8 @@ export default function AdminScreen({ onClose }) {
       baseUrl:           form.baseUrl.trim(),
       totalPhotos:       Math.max(1, Math.min(8,   parseInt(form.totalPhotos)    || 4)),
       countdownSecs:     Math.max(1, Math.min(10,  parseInt(form.countdownSecs)  || 3)),
-      autoRestartSecs:   Math.max(5, Math.min(120, parseInt(form.autoRestartSecs)|| 15)),
+      autoRestartSecs:    Math.max(5,  Math.min(120, parseInt(form.autoRestartSecs)    || 15)),
+      inactivityResetSecs: Math.max(10, Math.min(300, parseInt(form.inactivityResetSecs) || 30)),
       stripFooter:       form.stripFooter,
       stripBg:           form.stripBg,
       passwordHash,
@@ -255,6 +257,10 @@ export default function AdminScreen({ onClose }) {
           <Field label={t('adm.booth.restart', lang)}>
             <input style={s.input} type="number" min="5" max="120"
               value={form.autoRestartSecs} onChange={e => set('autoRestartSecs', e.target.value)} />
+          </Field>
+          <Field label={t('adm.booth.idle', lang)}>
+            <input style={s.input} type="number" min="10" max="300"
+              value={form.inactivityResetSecs} onChange={e => set('inactivityResetSecs', e.target.value)} />
           </Field>
         </Section>
 
