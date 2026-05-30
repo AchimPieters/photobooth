@@ -195,7 +195,11 @@ export default function App() {
         )}
       </div>
 
-      {showAdmin && <AdminScreen onClose={() => { setShowAdmin(false); refreshLicense() }} />}
+      {showAdmin && <AdminScreen onClose={() => {
+        setShowAdmin(false)
+        refreshLicense()
+        setLang(getSettings().language || 'nl')
+      }} />}
     </LangContext.Provider>
   )
 }

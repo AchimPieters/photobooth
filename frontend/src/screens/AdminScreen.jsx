@@ -2,11 +2,22 @@ import React, { useState, useRef, useEffect } from 'react'
 import { getSettings, saveSettings, verifyPassword, hashPassword } from '../utils/settings'
 import { getConfig } from '../utils/config'
 import { getLicenseInfo, verifyAndParseLicense, saveLicense, removeLicense, getRawLicense } from '../utils/license'
-import { formatDate } from '../utils/i18n'
+import { formatDate, t } from '../utils/i18n'
+
+// ─── TAALSWITCH ──────────────────────────────────────────────────────────────
+
+function LangSwitch({ lang, onChange }) {
+  return (
+    <div style={{ display: 'flex', gap: 6 }}>
+      <button style={{ ...s.langBtn, ...(lang === 'nl' ? s.langActive : {}) }} onClick={() => onChange('nl')}>🇳🇱</button>
+      <button style={{ ...s.langBtn, ...(lang === 'en' ? s.langActive : {}) }} onClick={() => onChange('en')}>🇬🇧</button>
+    </div>
+  )
+}
 
 // ─── LOGIN ───────────────────────────────────────────────────────────────────
 
-function LoginScreen({ onSuccess, onClose }) {
+function LoginScreen({ onSuccess, onClose, lang, onChangeLang }) {
   const [pw, setPw] = useState('')
   const [err, setErr] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -24,23 +35,23 @@ function LoginScreen({ onSuccess, onClose }) {
       <div style={s.topBar}>
         <button style={s.closeBtn} onClick={onClose}>✕</button>
         <span style={s.topTitle}>Admin</span>
-        <div style={{ width: 44 }} />
+        <LangSwitch lang={lang} onChange={onChangeLang} />
       </div>
       <div style={s.loginWrap}>
         <div style={s.lockIcon}>🔒</div>
-        <h2 style={s.loginTitle}>Admin toegang</h2>
+        <h2 style={s.loginTitle}>{t('adm.login.title', lang)}</h2>
         <input
           style={{ ...s.input, ...(err ? s.inputErr : {}) }}
-          type="password" placeholder="Wachtwoord"
+          type="password" placeholder={t('adm.login.pw', lang)}
           value={pw} autoComplete="current-password"
           onChange={e => { setPw(e.target.value); setErr(false) }}
           onKeyDown={e => e.key === 'Enter' && !busy && login()}
         />
-        {err && <p style={s.errMsg}>Onjuist wachtwoord</p>}
+        {err && <p style={s.errMsg}>{t('adm.login.wrong', lang)}</p>}
         <button style={s.loginBtn} onClick={login} disabled={busy}>
-          {busy ? 'Controleren…' : 'Inloggen'}
+          {busy ? t('adm.login.checking', lang) : t('adm.login.btn', lang)}
         </button>
-        <p style={s.hint}>Standaard wachtwoord: photobooth</p>
+        <p style={s.hint}>{t('adm.login.hint', lang)}</p>
       </div>
     </div>
   )
@@ -48,7 +59,7 @@ function LoginScreen({ onSuccess, onClose }) {
 
 // ─── LICENTIE-SECTIE ─────────────────────────────────────────────────────────
 
-function LicenseSection() {
+function LicenseSection({ lang }) {
   const [licInfo,    setLicInfo]  = useState(null)
   const [licLoading, setLoading]  = useState(true)
   const [licInput,   setLicInput] = useState(getRawLicense())
@@ -67,29 +78,29 @@ function LicenseSection() {
     const raw = licInput.replace(/\s+/g, '')
     if (!raw) {
       removeLicense(); setLicInfo(null)
-      setLicMsg({ ok: true, text: 'Licentie verwijderd' }); return
+      setLicMsg({ ok: true, text: t('adm.lic.removed', lang) }); return
     }
     const payload = await verifyAndParseLicense(raw)
-    if (!payload) { setLicMsg({ ok: false, text: 'Ongeldige licentiecode — controleer op typefouten' }); return }
-    if (new Date(payload.expires) < new Date()) { setLicMsg({ ok: false, text: `Licentie verlopen op ${payload.expires}` }); return }
+    if (!payload) { setLicMsg({ ok: false, text: t('adm.lic.invalid', lang) }); return }
+    if (new Date(payload.expires + 'T23:59:59Z') < new Date()) { setLicMsg({ ok: false, text: t('adm.lic.expired', lang, { date: formatDate(payload.expires) }) }); return }
     saveLicense(raw)
     const info = await getLicenseInfo()
     setLicInfo(info)
-    setLicMsg({ ok: true, text: `Geactiveerd voor ${payload.licensee} — geldig t/m ${formatDate(payload.expires)}` })
+    setLicMsg({ ok: true, text: t('adm.lic.activated', lang, { name: payload.licensee, date: formatDate(payload.expires) }) })
   }
 
   const deactivate = () => {
     removeLicense(); setLicInfo(null); setLicInput('')
-    setLicMsg({ ok: true, text: 'Licentie verwijderd' })
+    setLicMsg({ ok: true, text: t('adm.lic.removed', lang) })
   }
 
   if (licLoading) return null
 
   const badge = licInfo?.valid
-    ? { bg: 'rgba(39,174,96,0.15)',    color: '#27ae60', text: `✓  ${licInfo.licensee} — geldig t/m ${formatDate(licInfo.expires)}` }
+    ? { bg: 'rgba(39,174,96,0.15)',    color: '#27ae60', text: t('adm.lic.valid', lang, { name: licInfo.licensee, date: formatDate(licInfo.expires) }) }
     : licInfo?.reason === 'expired'
-      ? { bg: 'rgba(233,69,96,0.1)',   color: '#e94560', text: `Verlopen op ${formatDate(licInfo.expires)}` }
-      : { bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.45)', text: 'Geen actieve licentie — DEMO modus' }
+      ? { bg: 'rgba(233,69,96,0.1)',   color: '#e94560', text: t('adm.lic.exp_badge', lang, { date: formatDate(licInfo.expires) }) }
+      : { bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.45)', text: t('adm.lic.none', lang) }
 
   return (
     <>
@@ -97,8 +108,8 @@ function LicenseSection() {
         {badge.text}
       </div>
 
-      <Section title="🪪 Licentie activeren">
-        <Field label="Licentiecode (ontvangen van de licentie-uitgever)">
+      <Section title={t('adm.lic.section', lang)}>
+        <Field label={t('adm.lic.label', lang)}>
           <textarea
             style={{ ...s.input, minHeight: 88, resize: 'vertical', fontFamily: 'monospace', fontSize: 13 }}
             value={licInput}
@@ -113,10 +124,10 @@ function LicenseSection() {
           </p>
         )}
         <div style={{ display: 'flex', gap: 10 }}>
-          <button style={{ ...s.smBtn, flex: 1 }} onClick={activate}>Activeer</button>
+          <button style={{ ...s.smBtn, flex: 1 }} onClick={activate}>{t('adm.lic.activate', lang)}</button>
           {licInfo?.valid && (
             <button style={{ ...s.smBtn, background: 'rgba(233,69,96,0.15)', color: '#e94560' }} onClick={deactivate}>
-              Verwijder
+              {t('adm.lic.remove', lang)}
             </button>
           )}
         </div>
@@ -134,6 +145,9 @@ export default function AdminScreen({ onClose }) {
   const [newPw,     setNewPw]     = useState('')
   const [confirmPw, setConfirmPw] = useState('')
   const savedTimer = useRef(null)
+
+  const [lang, setLang] = useState(() => getSettings().language || 'nl')
+  const changeLang = (l) => { setLang(l); saveSettings({ language: l }) }
 
   const [form, setForm] = useState(() => {
     const c = getConfig()
@@ -159,8 +173,8 @@ export default function AdminScreen({ onClose }) {
     setPwError('')
     let passwordHash = form._passwordHash
     if (newPw) {
-      if (newPw !== confirmPw) { setPwError('Wachtwoorden komen niet overeen'); return }
-      if (newPw.length < 6)    { setPwError('Minimaal 6 tekens vereist'); return }
+      if (newPw !== confirmPw) { setPwError(t('adm.pw.mismatch', lang)); return }
+      if (newPw.length < 6)    { setPwError(t('adm.pw.tooshort', lang)); return }
       passwordHash = await hashPassword(newPw)
     }
     saveSettings({
@@ -183,42 +197,42 @@ export default function AdminScreen({ onClose }) {
   }
 
   if (phase === 'login') {
-    return <LoginScreen onSuccess={() => setPhase('settings')} onClose={onClose} />
+    return <LoginScreen onSuccess={() => setPhase('settings')} onClose={onClose} lang={lang} onChangeLang={changeLang} />
   }
 
   return (
     <div style={s.root}>
       <div style={s.topBar}>
         <button style={s.closeBtn} onClick={onClose}>✕</button>
-        <span style={s.topTitle}>Instellingen</span>
-        <div style={{ width: 44 }} />
+        <span style={s.topTitle}>{t('adm.title', lang)}</span>
+        <LangSwitch lang={lang} onChange={changeLang} />
       </div>
 
       <div style={s.scroll}>
 
         {/* ── Licenties ── */}
-        <LicenseSection />
+        <LicenseSection lang={lang} />
 
         {/* ── Betaling ── */}
-        <Section title="💳 Betaling">
-          <Field label="SumUp Affiliate Key">
+        <Section title={t('adm.pay.section', lang)}>
+          <Field label={t('adm.pay.key', lang)}>
             <input style={s.input} type="text" value={form.sumupAffiliateKey}
               onChange={e => set('sumupAffiliateKey', e.target.value)}
-              placeholder="Jouw SumUp affiliate key" autoComplete="off" />
+              placeholder={t('adm.pay.key_ph', lang)} autoComplete="off" />
           </Field>
-          <Field label="Prijs fotostrip (€)">
+          <Field label={t('adm.pay.price', lang)}>
             <input style={s.input} type="number" step="0.01" min="0"
               value={form.price} onChange={e => set('price', e.target.value)} />
           </Field>
-          <Field label="Prijs pasfoto's — 4 stuks (€)">
+          <Field label={t('adm.pay.passport', lang)}>
             <input style={s.input} type="number" step="0.01" min="0"
               value={form.passportPrice} onChange={e => set('passportPrice', e.target.value)} />
           </Field>
-          <Field label="Valuta">
+          <Field label={t('adm.pay.currency', lang)}>
             <input style={s.input} type="text" maxLength={3}
               value={form.currency} onChange={e => set('currency', e.target.value)} />
           </Field>
-          <Field label="Callback basis-URL">
+          <Field label={t('adm.pay.url', lang)}>
             <input style={s.input} type="url"
               value={form.baseUrl} onChange={e => set('baseUrl', e.target.value)}
               placeholder="https://achimpieters.github.io/photobooth" />
@@ -226,28 +240,28 @@ export default function AdminScreen({ onClose }) {
         </Section>
 
         {/* ── Fotobooth ── */}
-        <Section title="📷 Fotobooth">
-          <Field label="Aantal foto's (1–8)">
+        <Section title={t('adm.booth.section', lang)}>
+          <Field label={t('adm.booth.photos', lang)}>
             <input style={s.input} type="number" min="1" max="8"
               value={form.totalPhotos} onChange={e => set('totalPhotos', e.target.value)} />
           </Field>
-          <Field label="Aftelling (1–10 sec)">
+          <Field label={t('adm.booth.countdown', lang)}>
             <input style={s.input} type="number" min="1" max="10"
               value={form.countdownSecs} onChange={e => set('countdownSecs', e.target.value)} />
           </Field>
-          <Field label="Auto-herstart (5–120 sec)">
+          <Field label={t('adm.booth.restart', lang)}>
             <input style={s.input} type="number" min="5" max="120"
               value={form.autoRestartSecs} onChange={e => set('autoRestartSecs', e.target.value)} />
           </Field>
         </Section>
 
         {/* ── Fotostrip ── */}
-        <Section title="🎞️ Fotostrip">
-          <Field label="Footer tekst">
+        <Section title={t('adm.strip.section', lang)}>
+          <Field label={t('adm.strip.footer', lang)}>
             <input style={s.input} type="text"
               value={form.stripFooter} onChange={e => set('stripFooter', e.target.value)} />
           </Field>
-          <Field label="Achtergrondkleur">
+          <Field label={t('adm.strip.bg', lang)}>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               <input type="color" value={form.stripBg}
                 onChange={e => set('stripBg', e.target.value)} style={s.colorPicker} />
@@ -258,22 +272,22 @@ export default function AdminScreen({ onClose }) {
         </Section>
 
         {/* ── Wachtwoord ── */}
-        <Section title="🔑 Wachtwoord wijzigen">
-          <Field label="Nieuw wachtwoord">
+        <Section title={t('adm.pw.section', lang)}>
+          <Field label={t('adm.pw.new', lang)}>
             <input style={s.input} type="password" value={newPw}
               onChange={e => { setNewPw(e.target.value); setPwError('') }}
-              placeholder="Leeg laten = geen wijziging" autoComplete="new-password" />
+              placeholder={t('adm.pw.new_ph', lang)} autoComplete="new-password" />
           </Field>
-          <Field label="Bevestig wachtwoord">
+          <Field label={t('adm.pw.confirm', lang)}>
             <input style={s.input} type="password" value={confirmPw}
               onChange={e => { setConfirmPw(e.target.value); setPwError('') }}
-              placeholder="Herhaal nieuw wachtwoord" autoComplete="new-password" />
+              placeholder={t('adm.pw.confirm_ph', lang)} autoComplete="new-password" />
           </Field>
           {pwError && <p style={s.errMsg}>{pwError}</p>}
         </Section>
 
         <button style={saved ? s.savedBtn : s.saveBtn} onClick={save}>
-          {saved ? '✓  Opgeslagen!' : 'Opslaan'}
+          {saved ? t('adm.saved', lang) : t('adm.save', lang)}
         </button>
         <div style={{ height: 50 }} />
       </div>
@@ -319,6 +333,8 @@ const s = {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
   topTitle: { color: '#fff', fontSize: 22, fontWeight: 700 },
+  langBtn: { padding: '6px 12px', borderRadius: 16, background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)', fontSize: 16, fontWeight: 600 },
+  langActive: { background: 'rgba(255,255,255,0.2)', color: '#fff' },
   scroll: { flex: 1, overflowY: 'auto', padding: '20px 24px', WebkitOverflowScrolling: 'touch' },
   loginWrap: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '0 40px' },
   lockIcon: { fontSize: 64 },
