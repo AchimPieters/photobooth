@@ -3,6 +3,7 @@ import { getSettings, saveSettings, verifyPassword, hashPassword } from '../util
 import { getConfig } from '../utils/config'
 import { getLicenseInfo, verifyAndParseLicense, saveLicense, removeLicense, getRawLicense } from '../utils/license'
 import { formatDate, t } from '../utils/i18n'
+import { useLang } from '../context/LangContext'
 
 // ─── TAALSWITCH ──────────────────────────────────────────────────────────────
 
@@ -146,7 +147,9 @@ export default function AdminScreen({ onClose }) {
   const [confirmPw, setConfirmPw] = useState('')
   const savedTimer = useRef(null)
 
-  const [lang, setLang] = useState(() => getSettings().language || 'nl')
+  // Initialiseer vanuit de context (= taal die de gebruiker koos op WelcomeScreen)
+  const contextLang = useLang()
+  const [lang, setLang] = useState(contextLang)
   const changeLang = (l) => { setLang(l); saveSettings({ language: l }) }
 
   const [form, setForm] = useState(() => {
