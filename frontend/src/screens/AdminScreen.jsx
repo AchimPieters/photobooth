@@ -304,7 +304,7 @@ function Field({ label, children }) {
 
 const s = {
   root: {
-    position: 'fixed', inset: 0, zIndex: 200,
+    position: 'fixed', top: 0, right: 0, bottom: 0, left: 0, zIndex: 200,
     background: 'linear-gradient(135deg,#1a1a2e,#0f3460)',
     display: 'flex', flexDirection: 'column', overflowY: 'hidden',
   },

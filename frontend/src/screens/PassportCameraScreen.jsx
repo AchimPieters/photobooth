@@ -136,11 +136,11 @@ const s = {
     minHeight: '100vh', minHeight: '-webkit-fill-available',
   },
   video: {
-    position: 'absolute', inset: 0, width: '100%', height: '100%',
+    position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, width: '100%', height: '100%',
     objectFit: 'cover', transform: 'scaleX(-1)',
   },
   flash: {
-    position: 'absolute', inset: 0, background: '#fff',
+    position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, background: '#fff',
     pointerEvents: 'none', transition: 'opacity 0.15s', zIndex: 10,
   },
   countdown: {
@@ -175,7 +175,7 @@ const s = {
     transition: 'opacity 0.2s, transform 0.1s',
   },
   errorBox: {
-    position: 'absolute', inset: 0, zIndex: 12,
+    position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, zIndex: 12,
     display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40,
   },
   errorText: {

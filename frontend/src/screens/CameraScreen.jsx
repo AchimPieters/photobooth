@@ -115,8 +115,8 @@ export default function CameraScreen({ onComplete, onCancel }) {
 
 const s = {
   root: { position: 'relative', flex: 1, background: '#000', display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: '100vh', minHeight: '-webkit-fill-available' },
-  video: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' },
-  flash: { position: 'absolute', inset: 0, background: '#fff', pointerEvents: 'none', transition: 'opacity 0.15s', zIndex: 10 },
+  video: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' },
+  flash: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, background: '#fff', pointerEvents: 'none', transition: 'opacity 0.15s', zIndex: 10 },
   countdown: { position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', fontSize: 220, fontWeight: 900, color: '#fff', zIndex: 11, lineHeight: 1, textShadow: '0 0 40px rgba(0,0,0,0.5)' },
   topBar: { position: 'relative', zIndex: 5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 20px 0' },
   closeBtn: { width: 44, height: 44, borderRadius: '50%', background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' },
@@ -127,6 +127,6 @@ const s = {
   bottomBar: { position: 'relative', zIndex: 5, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, paddingBottom: 50 },
   shutter: { width: 90, height: 90, borderRadius: '50%', background: '#fff', boxShadow: '0 0 0 6px rgba(255,255,255,0.4)', transition: 'opacity 0.2s, transform 0.1s' },
   hint: { color: 'rgba(255,255,255,0.7)', fontSize: 16, fontWeight: 500 },
-  errorBox: { position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 6, padding: 40 },
+  errorBox: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 6, padding: 40 },
   errorText: { color: 'rgba(255,255,255,0.8)', fontSize: 20, textAlign: 'center', whiteSpace: 'pre-line', lineHeight: 1.6 },
 }
