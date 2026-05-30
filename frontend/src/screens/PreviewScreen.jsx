@@ -10,7 +10,12 @@ export default function PreviewScreen({ photos, onPay, onRetry }) {
   const [loading,  setLoading]    = useState(true)
 
   useEffect(() => {
-    buildStrip(photos, { footerText: config.stripFooter, bgColor: config.stripBg })
+    buildStrip(photos, {
+      footerText: config.stripFooter,
+      bgColor: config.stripBg,
+      overlay: config.stripTemplate || null,
+      overlayOpacity: config.stripTemplateOpacity ?? 1,
+    })
       .then(url => { setStripUrl(url); setLoading(false) })
   }, [photos])
 

@@ -10,6 +10,10 @@ const DEFAULTS = {
   autoRestartSecs:   15,
   stripFooter:       'Photobooth ✦ 2026',
   stripBg:           '#000000',
+  // Event-template: PNG met transparantie (data-URL) die als overlay over
+  // de fotostrip wordt geprint. '' = geen template.
+  stripTemplate:        '',
+  stripTemplateOpacity: 1,
   baseUrl:            '',
   passwordHash:       '',
   language:           'nl',

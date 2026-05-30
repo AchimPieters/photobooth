@@ -4,6 +4,39 @@ import { getConfig } from '../utils/config'
 import { getLicenseInfo, verifyAndParseLicense, saveLicense, removeLicense, getRawLicense } from '../utils/license'
 import { formatDate, t } from '../utils/i18n'
 import { useLang } from '../context/LangContext'
+import { buildTemplateGuide } from '../utils/photoStrip'
+
+// Maximale opslag voor een geüploade template (localStorage is ~5MB).
+const MAX_TEMPLATE_BYTES = 3.5 * 1024 * 1024
+
+// Eigen tweetalige teksten voor de event-template-sectie (de centrale
+// i18n-tabel wordt hier bewust niet voor gebruikt).
+const TPL = {
+  nl: {
+    title: 'Event-template (overlay)',
+    help: 'PNG met transparantie. De template wordt bovenop de fotostrip geprint; decoratie/iconen mogen deels over de foto’s vallen. Houd het MIN-kader vrij (gezichten); tot het MAX-kader mag je vullen. Download eerst de gids voor de exacte afmetingen.',
+    guide: '⬇ Download ontwerpgids',
+    upload: 'Template kiezen…',
+    replace: 'Andere template kiezen…',
+    remove: 'Verwijderen',
+    none: 'Geen template ingesteld',
+    opacity: 'Template-dekking',
+    tooBig: 'Bestand te groot om op te slaan. Gebruik een kleinere/gecomprimeerde PNG.',
+    badType: 'Kies een PNG-bestand (met transparantie).',
+  },
+  en: {
+    title: 'Event template (overlay)',
+    help: 'PNG with transparency. The template is printed on top of the photo strip; decorations/icons may partly overlap the photos. Keep the MIN frame clear (faces); you may fill up to the MAX frame. Download the guide first for the exact dimensions.',
+    guide: '⬇ Download design guide',
+    upload: 'Choose template…',
+    replace: 'Choose another template…',
+    remove: 'Remove',
+    none: 'No template set',
+    opacity: 'Template opacity',
+    tooBig: 'File too large to store. Use a smaller/compressed PNG.',
+    badType: 'Please choose a PNG file (with transparency).',
+  },
+}
 
 // ─── TAALSWITCH ──────────────────────────────────────────────────────────────
 
@@ -167,11 +200,43 @@ export default function AdminScreen({ onClose }) {
       inactivityResetSecs: String(c.inactivityResetSecs),
       stripFooter:       c.stripFooter,
       stripBg:           c.stripBg,
+      stripTemplate:        c.stripTemplate || '',
+      stripTemplateOpacity: c.stripTemplateOpacity ?? 1,
       _passwordHash:     s.passwordHash,
     }
   })
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }))
+
+  const tpl = TPL[lang] || TPL.nl
+  const fileRef = useRef(null)
+  const [tplErr, setTplErr] = useState('')
+
+  const onTemplateFile = (e) => {
+    const file = e.target.files && e.target.files[0]
+    e.target.value = '' // zelfde bestand opnieuw kiezen toestaan
+    if (!file) return
+    setTplErr('')
+    if (file.type !== 'image/png') { setTplErr(tpl.badType); return }
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result
+      if (dataUrl.length > MAX_TEMPLATE_BYTES) { setTplErr(tpl.tooBig); return }
+      set('stripTemplate', dataUrl)
+    }
+    reader.onerror = () => setTplErr(tpl.badType)
+    reader.readAsDataURL(file)
+  }
+
+  const downloadGuide = () => {
+    const url = buildTemplateGuide({
+      photoCount: Math.max(1, Math.min(8, parseInt(form.totalPhotos) || 4)),
+    })
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'photobooth-template-gids.png'
+    a.click()
+  }
 
   const save = async () => {
     setPwError('')
@@ -193,6 +258,8 @@ export default function AdminScreen({ onClose }) {
       inactivityResetSecs: Math.max(10, Math.min(300, parseInt(form.inactivityResetSecs) || 30)),
       stripFooter:       form.stripFooter,
       stripBg:           form.stripBg,
+      stripTemplate:        form.stripTemplate,
+      stripTemplateOpacity: form.stripTemplateOpacity,
       passwordHash,
     })
     setNewPw(''); setConfirmPw('')
@@ -278,6 +345,48 @@ export default function AdminScreen({ onClose }) {
                 value={form.stripBg} onChange={e => set('stripBg', e.target.value)} />
             </div>
           </Field>
+
+          {/* ── Event-template (overlay) ── */}
+          <Field label={tpl.title}>
+            <p style={s.tplHelp}>{tpl.help}</p>
+
+            <button style={s.tplGuideBtn} onClick={downloadGuide}>{tpl.guide}</button>
+
+            {form.stripTemplate
+              ? (
+                <div style={s.tplPreviewWrap}>
+                  <img src={form.stripTemplate} alt="template" style={s.tplPreview} />
+                </div>
+              )
+              : <p style={{ ...s.hint, marginTop: 10 }}>{tpl.none}</p>
+            }
+
+            {tplErr && <p style={s.errMsg}>{tplErr}</p>}
+
+            <input ref={fileRef} type="file" accept="image/png"
+              onChange={onTemplateFile} style={{ display: 'none' }} />
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+              <button style={{ ...s.smBtn, flex: 1 }} onClick={() => fileRef.current && fileRef.current.click()}>
+                {form.stripTemplate ? tpl.replace : tpl.upload}
+              </button>
+              {form.stripTemplate && (
+                <button style={{ ...s.smBtn, background: 'rgba(233,69,96,0.15)', color: '#e94560' }}
+                  onClick={() => { set('stripTemplate', ''); setTplErr('') }}>
+                  {tpl.remove}
+                </button>
+              )}
+            </div>
+
+            {form.stripTemplate && (
+              <div style={{ marginTop: 16 }}>
+                <p style={s.label}>{tpl.opacity} — {Math.round((form.stripTemplateOpacity ?? 1) * 100)}%</p>
+                <input type="range" min="0" max="100" style={{ width: '100%' }}
+                  value={Math.round((form.stripTemplateOpacity ?? 1) * 100)}
+                  onChange={e => set('stripTemplateOpacity', Number(e.target.value) / 100)} />
+              </div>
+            )}
+          </Field>
         </Section>
 
         {/* ── Wachtwoord ── */}
@@ -360,6 +469,10 @@ const s = {
   errMsg: { color: '#e94560', fontSize: 14, marginTop: 2 },
   colorPicker: { width: 56, height: 44, borderRadius: 10, border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer', padding: 2, background: 'rgba(255,255,255,0.08)' },
   smBtn: { padding: '14px 20px', borderRadius: 12, background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 16, fontWeight: 600 },
+  tplHelp: { color: 'rgba(255,255,255,0.5)', fontSize: 13, lineHeight: 1.5, margin: '0 0 12px' },
+  tplGuideBtn: { width: '100%', padding: '14px', borderRadius: 12, background: 'rgba(29,161,242,0.18)', color: '#1da1f2', fontSize: 15, fontWeight: 700 },
+  tplPreviewWrap: { marginTop: 12, display: 'flex', justifyContent: 'center', padding: 12, borderRadius: 12, background: 'rgba(255,255,255,0.06)', backgroundImage: 'linear-gradient(45deg,rgba(255,255,255,0.08) 25%,transparent 25%),linear-gradient(-45deg,rgba(255,255,255,0.08) 25%,transparent 25%),linear-gradient(45deg,transparent 75%,rgba(255,255,255,0.08) 75%),linear-gradient(-45deg,transparent 75%,rgba(255,255,255,0.08) 75%)', backgroundSize: '16px 16px', backgroundPosition: '0 0,0 8px,8px -8px,-8px 0' },
+  tplPreview: { maxWidth: 140, maxHeight: 220, borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.4)' },
   codeBox: { background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '12px 14px', fontFamily: 'monospace', fontSize: 12, color: 'rgba(255,255,255,0.8)', wordBreak: 'break-all', lineHeight: 1.6 },
   saveBtn: { width: '100%', padding: '22px', borderRadius: 16, background: 'linear-gradient(90deg,#e94560,#c0392b)', color: '#fff', fontSize: 20, fontWeight: 600, boxShadow: '0 6px 20px rgba(233,69,96,0.4)', marginTop: 8 },
   savedBtn: { width: '100%', padding: '22px', borderRadius: 16, background: 'linear-gradient(90deg,#27ae60,#1e8449)', color: '#fff', fontSize: 20, fontWeight: 600, marginTop: 8 },
