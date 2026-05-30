@@ -58,7 +58,7 @@ const T = {
 
     // PassportCameraScreen
     'pc.label':          '🪪  Pasfoto',
-    'pc.hint':           'Positioneer je hoofd in het kader',
+    'pc.hint':           'Positioneer je ogen op de gele streep',
     'pc.still':          '⚠️  Niet bewegen…',
     'pc.processing':     'Verwerken…',
     'pc.no_access':      '📵  Geen camera-toegang\n\nGa naar Instellingen → Safari → Camera → Toestaan',
@@ -181,7 +181,7 @@ const T = {
 
     // PassportCameraScreen
     'pc.label':          '🪪  Passport Photo',
-    'pc.hint':           'Position your head in the frame',
+    'pc.hint':           'Align your eyes with the yellow line',
     'pc.still':          '⚠️  Hold still…',
     'pc.processing':     'Processing…',
     'pc.no_access':      '📵  No camera access\n\nGo to Settings → Safari → Camera → Allow',
