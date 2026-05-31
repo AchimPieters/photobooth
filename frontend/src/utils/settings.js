@@ -10,9 +10,10 @@ const DEFAULTS = {
   autoRestartSecs:   15,
   stripFooter:       'Photobooth ✦ 2026',
   stripBg:           '#000000',
-  // Event-template: PNG met transparantie (data-URL) die als overlay over
-  // de fotostrip wordt geprint. '' = geen template.
-  stripTemplate:        '',
+  // Event-templates: PNG met transparantie (data-URL) per papierformaat, als
+  // overlay over de fotostrip geprint. Map papier-id → data-URL, bijv.
+  // { L: 'data:...', postcard: 'data:...' }. Leeg = geen template.
+  stripTemplates:       {},
   stripTemplateOpacity: 1,
   baseUrl:            '',
   passwordHash:       '',
@@ -30,7 +31,18 @@ const DEFAULTS = {
 export function getSettings() {
   try {
     const raw = localStorage.getItem(KEY)
-    if (raw) return { ...DEFAULTS, ...JSON.parse(raw) }
+    if (raw) {
+      const merged = { ...DEFAULTS, ...JSON.parse(raw) }
+      // Migratie: oude losse stripTemplate → map onder het strip-papierformaat.
+      if (merged.stripTemplate && (!merged.stripTemplates || Object.keys(merged.stripTemplates).length === 0)) {
+        const printer = (merged.printers || []).find(p => p.id === merged.stripPrinterId) || (merged.printers || [])[0]
+        const paper = printer?.paper || 'L'
+        merged.stripTemplates = { [paper]: merged.stripTemplate }
+      }
+      delete merged.stripTemplate
+      if (!merged.stripTemplates || typeof merged.stripTemplates !== 'object') merged.stripTemplates = {}
+      return merged
+    }
   } catch {}
   return { ...DEFAULTS }
 }

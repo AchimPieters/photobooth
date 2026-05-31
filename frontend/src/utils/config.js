@@ -13,7 +13,7 @@ export function getConfig() {
     inactivityResetSecs: s.inactivityResetSecs,
     stripFooter:       s.stripFooter,
     stripBg:           s.stripBg,
-    stripTemplate:        s.stripTemplate,
+    stripTemplates:       s.stripTemplates || {},
     stripTemplateOpacity: s.stripTemplateOpacity,
     printers:          Array.isArray(s.printers) && s.printers.length ? s.printers : [{ id: 'p1', name: 'SELPHY CP1500 (1)', paper: 'L' }],
     stripPrinterId:    s.stripPrinterId || 'p1',
@@ -29,6 +29,13 @@ export function paperForProduct(kind) {
   const wantId = kind === 'passport' ? c.passportPrinterId : c.stripPrinterId
   const printer = c.printers.find(p => p.id === wantId) || c.printers[0]
   return printer?.paper || 'L'
+}
+
+// De event-template (data-URL of null) voor de fotostrip op het huidige
+// strip-papierformaat. Elk papierformaat heeft een eigen template.
+export function stripTemplateForPaper(paper) {
+  const c = getConfig()
+  return (c.stripTemplates && c.stripTemplates[paper]) || null
 }
 
 // Proxy zodat bestaande `config.price` etc. altijd vers uit localStorage leest

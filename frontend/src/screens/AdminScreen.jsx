@@ -39,7 +39,8 @@ const MAX_TEMPLATE_BYTES = 3.5 * 1024 * 1024
 const TPL = {
   nl: {
     title: 'Event-template (overlay)',
-    help: 'PNG met transparantie, 300 dpi. De template wordt bovenop de fotostrip geprint; decoratie/iconen mogen deels over de foto’s vallen. Houd het MIN-kader vrij (gezichten); tot het MAX-kader mag je vullen. Download eerst de gids — die opent op exact de juiste maat @ 300 dpi.',
+    help: 'PNG met transparantie, 300 dpi. De template wordt bovenop de fotostrip geprint; decoratie/iconen mogen deels over de foto’s vallen. Houd het MIN-kader vrij (gezichten); tot het MAX-kader mag je vullen. Elk papierformaat heeft een eigen template — download per formaat de gids (die opent op exact de juiste maat @ 300 dpi).',
+    forPaper: 'Template voor papierformaat',
     guide: '⬇ Download ontwerpgids',
     upload: 'Template kiezen…',
     replace: 'Andere template kiezen…',
@@ -51,7 +52,8 @@ const TPL = {
   },
   en: {
     title: 'Event template (overlay)',
-    help: 'PNG with transparency, 300 dpi. The template is printed on top of the photo strip; decorations/icons may partly overlap the photos. Keep the MIN frame clear (faces); you may fill up to the MAX frame. Download the guide first — it opens at the exact size @ 300 dpi.',
+    help: 'PNG with transparency, 300 dpi. The template is printed on top of the photo strip; decorations/icons may partly overlap the photos. Keep the MIN frame clear (faces); you may fill up to the MAX frame. Each paper size has its own template — download the guide per size (it opens at the exact size @ 300 dpi).',
+    forPaper: 'Template for paper size',
     guide: '⬇ Download design guide',
     upload: 'Choose template…',
     replace: 'Choose another template…',
@@ -225,7 +227,7 @@ export default function AdminScreen({ onClose }) {
       inactivityResetSecs: String(c.inactivityResetSecs),
       stripFooter:       c.stripFooter,
       stripBg:           c.stripBg,
-      stripTemplate:        c.stripTemplate || '',
+      stripTemplates:       { ...(c.stripTemplates || {}) },
       stripTemplateOpacity: c.stripTemplateOpacity ?? 1,
       printers:          (c.printers || []).map(p => ({ ...p })),
       stripPrinterId:    c.stripPrinterId,
@@ -240,6 +242,19 @@ export default function AdminScreen({ onClose }) {
   const fileRef = useRef(null)
   const [tplErr, setTplErr] = useState('')
 
+  const prn = PRN[lang] || PRN.nl
+
+  // Papier van de aan de fotostrip toegewezen printer (voor de ontwerpgids).
+  const stripPaper = (() => {
+    const p = form.printers.find(pr => pr.id === form.stripPrinterId) || form.printers[0]
+    return p?.paper || DEFAULT_PAPER
+  })()
+
+  // Welk papierformaat wordt nu bewerkt in de template-sectie. Standaard het
+  // formaat dat de fotostrip gebruikt. Elk formaat heeft een eigen template.
+  const [tplPaper, setTplPaper] = useState(stripPaper)
+  const currentTemplate = form.stripTemplates[tplPaper] || ''
+
   const onTemplateFile = (e) => {
     const file = e.target.files && e.target.files[0]
     e.target.value = '' // zelfde bestand opnieuw kiezen toestaan
@@ -250,28 +265,29 @@ export default function AdminScreen({ onClose }) {
     reader.onload = () => {
       const dataUrl = reader.result
       if (dataUrl.length > MAX_TEMPLATE_BYTES) { setTplErr(tpl.tooBig); return }
-      set('stripTemplate', dataUrl)
+      setForm(f => ({ ...f, stripTemplates: { ...f.stripTemplates, [tplPaper]: dataUrl } }))
     }
     reader.onerror = () => setTplErr(tpl.badType)
     reader.readAsDataURL(file)
   }
 
-  const prn = PRN[lang] || PRN.nl
-
-  // Papier van de aan de fotostrip toegewezen printer (voor de ontwerpgids).
-  const stripPaper = (() => {
-    const p = form.printers.find(pr => pr.id === form.stripPrinterId) || form.printers[0]
-    return p?.paper || DEFAULT_PAPER
-  })()
+  const removeTemplate = () => {
+    setTplErr('')
+    setForm(f => {
+      const next = { ...f.stripTemplates }
+      delete next[tplPaper]
+      return { ...f, stripTemplates: next }
+    })
+  }
 
   const downloadGuide = () => {
     const url = buildTemplateGuide({
-      paper: stripPaper,
+      paper: tplPaper,
       photoCount: Math.max(1, Math.min(8, parseInt(form.totalPhotos) || 4)),
     })
     const a = document.createElement('a')
     a.href = url
-    a.download = `photobooth-template-gids-${stripPaper}-300dpi.png`
+    a.download = `photobooth-template-gids-${tplPaper}-300dpi.png`
     a.click()
   }
 
@@ -319,7 +335,7 @@ export default function AdminScreen({ onClose }) {
       inactivityResetSecs: Math.max(10, Math.min(300, parseInt(form.inactivityResetSecs) || 30)),
       stripFooter:       form.stripFooter,
       stripBg:           form.stripBg,
-      stripTemplate:        form.stripTemplate,
+      stripTemplates:       form.stripTemplates,
       stripTemplateOpacity: form.stripTemplateOpacity,
       printers:          form.printers.map(p => ({
         id: p.id,
@@ -472,16 +488,28 @@ export default function AdminScreen({ onClose }) {
             </div>
           </Field>
 
-          {/* ── Event-template (overlay) ── */}
+          {/* ── Event-template (overlay), per papierformaat ── */}
           <Field label={tpl.title}>
             <p style={s.tplHelp}>{tpl.help}</p>
 
+            {/* Kies welk papierformaat je bewerkt — elk formaat een eigen template. */}
+            <p style={{ ...s.label, marginBottom: 6 }}>{tpl.forPaper}</p>
+            <select style={s.input} value={tplPaper} onChange={e => { setTplPaper(e.target.value); setTplErr('') }}>
+              {Object.values(PAPERS).map(pp => (
+                <option key={pp.id} value={pp.id}>
+                  {paperLabel(pp.id, lang)}{form.stripTemplates[pp.id] ? ' ✓' : ''}
+                </option>
+              ))}
+            </select>
+
+            <div style={{ height: 12 }} />
+
             <button style={s.tplGuideBtn} onClick={downloadGuide}>{tpl.guide}</button>
 
-            {form.stripTemplate
+            {currentTemplate
               ? (
                 <div style={s.tplPreviewWrap}>
-                  <img src={form.stripTemplate} alt="template" style={s.tplPreview} />
+                  <img src={currentTemplate} alt="template" style={s.tplPreview} />
                 </div>
               )
               : <p style={{ ...s.hint, marginTop: 10 }}>{tpl.none}</p>
@@ -494,17 +522,17 @@ export default function AdminScreen({ onClose }) {
 
             <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
               <button style={{ ...s.smBtn, flex: 1 }} onClick={() => fileRef.current && fileRef.current.click()}>
-                {form.stripTemplate ? tpl.replace : tpl.upload}
+                {currentTemplate ? tpl.replace : tpl.upload}
               </button>
-              {form.stripTemplate && (
+              {currentTemplate && (
                 <button style={{ ...s.smBtn, background: 'rgba(233,69,96,0.15)', color: '#e94560' }}
-                  onClick={() => { set('stripTemplate', ''); setTplErr('') }}>
+                  onClick={removeTemplate}>
                   {tpl.remove}
                 </button>
               )}
             </div>
 
-            {form.stripTemplate && (
+            {Object.keys(form.stripTemplates).length > 0 && (
               <div style={{ marginTop: 16 }}>
                 <p style={s.label}>{tpl.opacity} — {Math.round((form.stripTemplateOpacity ?? 1) * 100)}%</p>
                 <input type="range" min="0" max="100" style={{ width: '100%' }}
