@@ -13,8 +13,22 @@ export function getConfig() {
     inactivityResetSecs: s.inactivityResetSecs,
     stripFooter:       s.stripFooter,
     stripBg:           s.stripBg,
+    stripTemplate:        s.stripTemplate,
+    stripTemplateOpacity: s.stripTemplateOpacity,
+    printers:          Array.isArray(s.printers) && s.printers.length ? s.printers : [{ id: 'p1', name: 'SELPHY CP1500 (1)', paper: 'L' }],
+    stripPrinterId:    s.stripPrinterId || 'p1',
+    passportPrinterId: s.passportPrinterId || 'p1',
     baseUrl:           s.baseUrl || (import.meta.env.VITE_BASE_URL ?? 'https://achimpieters.github.io/photobooth'),
   }
+}
+
+// Resolve't de paper-id voor een product ('strip' of 'passport') via de
+// toegewezen printer. Valt terug op de eerste printer / L-formaat.
+export function paperForProduct(kind) {
+  const c = getConfig()
+  const wantId = kind === 'passport' ? c.passportPrinterId : c.stripPrinterId
+  const printer = c.printers.find(p => p.id === wantId) || c.printers[0]
+  return printer?.paper || 'L'
 }
 
 // Proxy zodat bestaande `config.price` etc. altijd vers uit localStorage leest

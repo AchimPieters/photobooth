@@ -18,6 +18,13 @@ const DEFAULTS = {
   passwordHash:       '',
   language:           'nl',
   inactivityResetSecs: 30,
+  // Printers: lijst van SELPHY CP1500's, elk met een eigen papierformaat.
+  // Per product (fotostrip / pasfoto's) wijs je een printer toe; de app
+  // rendert dan op het juiste formaat. Welke fysieke printer de taak krijgt
+  // kiest de operator in de iOS AirPrint-dialoog (browser kan dat niet sturen).
+  printers: [{ id: 'p1', name: 'SELPHY CP1500 (1)', paper: 'L' }],
+  stripPrinterId:    'p1',
+  passportPrinterId: 'p1',
 }
 
 export function getSettings() {

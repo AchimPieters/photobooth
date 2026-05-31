@@ -15,11 +15,15 @@
  * Volledig client-side, werkt op iOS 12 Safari.
  */
 
-// 4×6" @ 300 dpi
-export const PRINT_DPI = 300
+import { paperPx, PRINT_DPI as PAPER_DPI } from './papers'
+
+// 300 dpi. Het vel-formaat is nu instelbaar per printer (zie papers.js);
+// de constanten hieronder houden de oude 4×6"-default voor bestaande imports
+// (passportStrip importeert SHEET_W/SHEET_H, tests gebruiken STRIP_W).
+export const PRINT_DPI = PAPER_DPI
 export const SHEET_W = 1200
 export const SHEET_H = 1800
-// Eén strip = halve velbreedte → ~50×150 mm (2×6").
+// Eén strip = halve velbreedte.
 export const STRIP_W = SHEET_W / 2
 export const STRIP_H = SHEET_H
 
@@ -131,34 +135,40 @@ function renderStripCanvas(photos, w, h, opts = {}) {
 }
 
 /**
- * Bouwt het volledige 4×6" print-vel: twee identieke strips naast elkaar met
- * een snijlijn in het midden. Dit is wat naar de SELPHY wordt geprint.
+ * Bouwt het volledige print-vel voor het gekozen papierformaat: twee identieke
+ * strips naast elkaar met een snijlijn in het midden. Dit is wat naar de SELPHY
+ * wordt geprint. Het velformaat komt uit options.paper (papier-id, bijv. 'L').
  */
 export async function buildPrintSheet(photos, options = {}) {
   if (!photos || photos.length === 0) return null
 
-  const strip = await renderStripCanvas(photos, STRIP_W, STRIP_H, options)
+  const sheetPx = paperPx(options.paper)
+  const sheetW = sheetPx.w
+  const sheetH = sheetPx.h
+  const stripW = Math.round(sheetW / 2)
+
+  const strip = await renderStripCanvas(photos, stripW, sheetH, options)
 
   const sheet = document.createElement('canvas')
-  sheet.width = SHEET_W
-  sheet.height = SHEET_H
+  sheet.width = sheetW
+  sheet.height = sheetH
   const ctx = sheet.getContext('2d')
 
   // Witte achtergrond onder de strips (borderless print vult het vel).
   ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, SHEET_W, SHEET_H)
+  ctx.fillRect(0, 0, sheetW, sheetH)
 
   // Twee identieke strips naast elkaar.
   ctx.drawImage(strip, 0, 0)
-  ctx.drawImage(strip, STRIP_W, 0)
+  ctx.drawImage(strip, stripW, 0)
 
   // Snijlijn in het midden (knip hier → 2 strips).
   ctx.strokeStyle = 'rgba(0,0,0,0.35)'
   ctx.lineWidth = 2
   ctx.setLineDash([14, 10])
   ctx.beginPath()
-  ctx.moveTo(STRIP_W, 0)
-  ctx.lineTo(STRIP_W, SHEET_H)
+  ctx.moveTo(stripW, 0)
+  ctx.lineTo(stripW, sheetH)
   ctx.stroke()
   ctx.setLineDash([])
 
@@ -167,9 +177,9 @@ export async function buildPrintSheet(photos, options = {}) {
   ctx.font = '28px sans-serif'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'top'
-  ctx.fillText('✂', STRIP_W, 6)
+  ctx.fillText('✂', stripW, 6)
   ctx.textBaseline = 'bottom'
-  ctx.fillText('✂', STRIP_W, SHEET_H - 6)
+  ctx.fillText('✂', stripW, sheetH - 6)
 
   return sheet.toDataURL('image/jpeg', 0.92)
 }
@@ -198,8 +208,9 @@ export async function buildStrip(photos, options = {}) {
  * vallen) en de voettekst-zone. Getagd op 300 dpi met maatvoering.
  */
 export function buildTemplateGuide(options = {}) {
-  const w = STRIP_W
-  const h = STRIP_H
+  const sheetPx = paperPx(options.paper)
+  const w = Math.round(sheetPx.w / 2) // één strip = halve velbreedte
+  const h = sheetPx.h
   const photoCount = Math.max(1, Math.min(8, options.photoCount || 4))
 
   const canvas = document.createElement('canvas')

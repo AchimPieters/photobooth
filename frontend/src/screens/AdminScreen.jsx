@@ -5,6 +5,31 @@ import { getLicenseInfo, verifyAndParseLicense, saveLicense, removeLicense, getR
 import { formatDate, t } from '../utils/i18n'
 import { useLang } from '../context/LangContext'
 import { buildTemplateGuide } from '../utils/photoStrip'
+import { PAPERS, DEFAULT_PAPER, paperLabel } from '../utils/papers'
+
+// Tweetalige teksten voor de printers-sectie.
+const PRN = {
+  nl: {
+    section: '🖨️ Printers (SELPHY CP1500)',
+    intro: 'Voeg één of meer SELPHY CP1500-printers toe, elk met een eigen papierformaat. Wijs per product een printer toe. De app print dan op het juiste formaat; kies in de iOS-printdialoog de bijbehorende fysieke printer.',
+    name: 'Naam',
+    paper: 'Papierformaat',
+    add: '+ Printer toevoegen',
+    remove: 'Verwijderen',
+    stripPrinter: 'Printer voor fotostrip',
+    passportPrinter: "Printer voor pasfoto's",
+  },
+  en: {
+    section: '🖨️ Printers (SELPHY CP1500)',
+    intro: 'Add one or more SELPHY CP1500 printers, each with its own paper size. Assign a printer per product. The app then prints at the correct size; pick the matching physical printer in the iOS print dialog.',
+    name: 'Name',
+    paper: 'Paper size',
+    add: '+ Add printer',
+    remove: 'Remove',
+    stripPrinter: 'Printer for photo strip',
+    passportPrinter: 'Printer for passport photos',
+  },
+}
 
 // Maximale opslag voor een geüploade template (localStorage is ~5MB).
 const MAX_TEMPLATE_BYTES = 3.5 * 1024 * 1024
@@ -202,6 +227,9 @@ export default function AdminScreen({ onClose }) {
       stripBg:           c.stripBg,
       stripTemplate:        c.stripTemplate || '',
       stripTemplateOpacity: c.stripTemplateOpacity ?? 1,
+      printers:          (c.printers || []).map(p => ({ ...p })),
+      stripPrinterId:    c.stripPrinterId,
+      passportPrinterId: c.passportPrinterId,
       _passwordHash:     s.passwordHash,
     }
   })
@@ -228,15 +256,48 @@ export default function AdminScreen({ onClose }) {
     reader.readAsDataURL(file)
   }
 
+  const prn = PRN[lang] || PRN.nl
+
+  // Papier van de aan de fotostrip toegewezen printer (voor de ontwerpgids).
+  const stripPaper = (() => {
+    const p = form.printers.find(pr => pr.id === form.stripPrinterId) || form.printers[0]
+    return p?.paper || DEFAULT_PAPER
+  })()
+
   const downloadGuide = () => {
     const url = buildTemplateGuide({
+      paper: stripPaper,
       photoCount: Math.max(1, Math.min(8, parseInt(form.totalPhotos) || 4)),
     })
     const a = document.createElement('a')
     a.href = url
-    a.download = 'photobooth-template-gids-300dpi.png'
+    a.download = `photobooth-template-gids-${stripPaper}-300dpi.png`
     a.click()
   }
+
+  // ── Printer-beheer ──
+  const setPrinter = (id, key, val) =>
+    setForm(f => ({ ...f, printers: f.printers.map(p => p.id === id ? { ...p, [key]: val } : p) }))
+
+  const addPrinter = () =>
+    setForm(f => {
+      const n = f.printers.length + 1
+      const id = `p${Date.now().toString(36)}`
+      return { ...f, printers: [...f.printers, { id, name: `SELPHY CP1500 (${n})`, paper: DEFAULT_PAPER }] }
+    })
+
+  const removePrinter = (id) =>
+    setForm(f => {
+      if (f.printers.length <= 1) return f // minstens één printer
+      const printers = f.printers.filter(p => p.id !== id)
+      const fallback = printers[0].id
+      return {
+        ...f,
+        printers,
+        stripPrinterId:    f.stripPrinterId === id ? fallback : f.stripPrinterId,
+        passportPrinterId: f.passportPrinterId === id ? fallback : f.passportPrinterId,
+      }
+    })
 
   const save = async () => {
     setPwError('')
@@ -260,6 +321,13 @@ export default function AdminScreen({ onClose }) {
       stripBg:           form.stripBg,
       stripTemplate:        form.stripTemplate,
       stripTemplateOpacity: form.stripTemplateOpacity,
+      printers:          form.printers.map(p => ({
+        id: p.id,
+        name: (p.name || '').trim() || 'SELPHY CP1500',
+        paper: PAPERS[p.paper] ? p.paper : DEFAULT_PAPER,
+      })),
+      stripPrinterId:    form.stripPrinterId,
+      passportPrinterId: form.passportPrinterId,
       passwordHash,
     })
     setNewPw(''); setConfirmPw('')
@@ -328,6 +396,64 @@ export default function AdminScreen({ onClose }) {
           <Field label={t('adm.booth.idle', lang)}>
             <input style={s.input} type="number" min="10" max="300"
               value={form.inactivityResetSecs} onChange={e => set('inactivityResetSecs', e.target.value)} />
+          </Field>
+        </Section>
+
+        {/* ── Printers ── */}
+        <Section title={prn.section}>
+          <p style={s.tplHelp}>{prn.intro}</p>
+
+          {form.printers.map((p, i) => (
+            <div key={p.id} style={s.printerCard}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10 }}>
+                <span style={s.printerNum}>{i + 1}</span>
+                <input
+                  style={{ ...s.input, flex: 1 }}
+                  type="text"
+                  value={p.name}
+                  onChange={e => setPrinter(p.id, 'name', e.target.value)}
+                  placeholder={prn.name}
+                />
+                {form.printers.length > 1 && (
+                  <button
+                    style={s.printerDel}
+                    onClick={() => removePrinter(p.id)}
+                    title={prn.remove}
+                  >✕</button>
+                )}
+              </div>
+              <p style={{ ...s.label, marginBottom: 6 }}>{prn.paper}</p>
+              <select
+                style={s.input}
+                value={p.paper}
+                onChange={e => setPrinter(p.id, 'paper', e.target.value)}
+              >
+                {Object.values(PAPERS).map(pp => (
+                  <option key={pp.id} value={pp.id}>{paperLabel(pp.id, lang)}</option>
+                ))}
+              </select>
+            </div>
+          ))}
+
+          <button style={s.smBtn} onClick={addPrinter}>{prn.add}</button>
+
+          <div style={{ height: 16 }} />
+
+          <Field label={prn.stripPrinter}>
+            <select style={s.input} value={form.stripPrinterId}
+              onChange={e => set('stripPrinterId', e.target.value)}>
+              {form.printers.map(p => (
+                <option key={p.id} value={p.id}>{p.name} — {paperLabel(p.paper, lang)}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label={prn.passportPrinter}>
+            <select style={s.input} value={form.passportPrinterId}
+              onChange={e => set('passportPrinterId', e.target.value)}>
+              {form.printers.map(p => (
+                <option key={p.id} value={p.id}>{p.name} — {paperLabel(p.paper, lang)}</option>
+              ))}
+            </select>
           </Field>
         </Section>
 
@@ -469,6 +595,9 @@ const s = {
   errMsg: { color: '#e94560', fontSize: 14, marginTop: 2 },
   colorPicker: { width: 56, height: 44, borderRadius: 10, border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer', padding: 2, background: 'rgba(255,255,255,0.08)' },
   smBtn: { padding: '14px 20px', borderRadius: 12, background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 16, fontWeight: 600 },
+  printerCard: { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, padding: 14, marginBottom: 12 },
+  printerNum: { flexShrink: 0, width: 28, height: 28, borderRadius: '50%', background: 'rgba(29,161,242,0.2)', color: '#1da1f2', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  printerDel: { flexShrink: 0, width: 40, height: 40, borderRadius: 10, background: 'rgba(233,69,96,0.15)', color: '#e94560', fontSize: 16, fontWeight: 700 },
   tplHelp: { color: 'rgba(255,255,255,0.5)', fontSize: 13, lineHeight: 1.5, margin: '0 0 12px' },
   tplGuideBtn: { width: '100%', padding: '14px', borderRadius: 12, background: 'rgba(29,161,242,0.18)', color: '#1da1f2', fontSize: 15, fontWeight: 700 },
   tplPreviewWrap: { marginTop: 12, display: 'flex', justifyContent: 'center', padding: 12, borderRadius: 12, background: 'rgba(255,255,255,0.06)', backgroundImage: 'linear-gradient(45deg,rgba(255,255,255,0.08) 25%,transparent 25%),linear-gradient(-45deg,rgba(255,255,255,0.08) 25%,transparent 25%),linear-gradient(45deg,transparent 75%,rgba(255,255,255,0.08) 75%),linear-gradient(-45deg,transparent 75%,rgba(255,255,255,0.08) 75%)', backgroundSize: '16px 16px', backgroundPosition: '0 0,0 8px,8px -8px,-8px 0' },

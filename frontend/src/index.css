@@ -36,13 +36,15 @@ button {
 }
 button:active { opacity: 0.85; transform: scale(0.98); }
 
-/* ── Print: alleen het 4×6"-vel (Canon SELPHY CP1500, borderless) ── */
+/* ── Print: alleen het SELPHY-vel (Canon SELPHY CP1500, borderless) ──
+   De exacte velgrootte (@page size + breedte/hoogte) wordt per product
+   dynamisch geïnjecteerd via applyPrintPaper() in #print-page-size, zodat
+   fotostrip en pasfoto's elk op hun eigen papierformaat printen. Hier staan
+   alleen de structurele regels die altijd gelden. */
 @media print {
   body > * { display: none !important; }
   #print-strip { display: block !important; }
   html, body {
-    width: 4in;
-    height: 6in;
     margin: 0;
     padding: 0;
     overflow: hidden;
@@ -50,13 +52,9 @@ button:active { opacity: 0.85; transform: scale(0.98); }
   }
   #print-strip,
   #print-strip img {
-    width: 4in;
-    height: 6in;
     margin: 0;
     display: block;
-    /* Het vel is exact 2:3, dus 'contain' vult het zonder vervorming. */
+    /* Vel is exact het printgebied, dus 'contain' vult zonder vervorming. */
     object-fit: contain;
   }
-  /* Borderless: geen pagina-marge → SELPHY print full-bleed op 4×6". */
-  @page { size: 4in 6in; margin: 0; }
 }

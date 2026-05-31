@@ -12,7 +12,8 @@ import { buildPassportStrip }     from './utils/passportStrip'
 import { getLicenseInfo }         from './utils/license'
 import { getSettings, saveSettings } from './utils/settings'
 import { LangContext }            from './context/LangContext'
-import config                     from './utils/config'
+import config, { paperForProduct } from './utils/config'
+import { applyPrintPaper } from './utils/papers'
 
 function readPaymentResult() {
   const params = new URLSearchParams(window.location.search)
@@ -65,6 +66,12 @@ export default function App() {
     return () => clearInterval(id)
   }, [refreshLicense])
   useEffect(() => { sessionRef.current = session }, [session])
+
+  // Stem het print-papierformaat (@page) af op het product van de sessie,
+  // zodat de SELPHY met het juiste formaat print. Bij geen sessie: strip-default.
+  useEffect(() => {
+    applyPrintPaper(paperForProduct(session?.mode === 'passport' ? 'passport' : 'strip'))
+  }, [session?.mode])
 
   // — Inactiviteits-reset —
   // Elke interactie werkt een timestamp bij; deze listener staat altijd aan.
@@ -128,7 +135,7 @@ export default function App() {
   }, [])
 
   const onPassportPay = useCallback(async () => {
-    const stripDataUrl = await buildPassportStrip(sessionRef.current?.photo)
+    const stripDataUrl = await buildPassportStrip(sessionRef.current?.photo, { paper: paperForProduct('passport') })
     setSession(s => ({ ...s, stripDataUrl }))
     setScreen('payment')
   }, [])

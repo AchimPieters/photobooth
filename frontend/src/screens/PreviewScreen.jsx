@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { buildPrintSheet } from '../utils/photoStrip'
-import config from '../utils/config'
+import config, { paperForProduct } from '../utils/config'
 import { useLang } from '../context/LangContext'
 import { t } from '../utils/i18n'
 
@@ -11,6 +11,7 @@ export default function PreviewScreen({ photos, onPay, onRetry }) {
 
   useEffect(() => {
     buildPrintSheet(photos, {
+      paper: paperForProduct('strip'),
       footerText: config.stripFooter,
       bgColor: config.stripBg,
       overlay: config.stripTemplate || null,
