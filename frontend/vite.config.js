@@ -20,11 +20,23 @@ export default defineConfig({
       registerType: 'autoUpdate',
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Verouderde caches direct opruimen + nieuwe service-worker meteen
+        // activeren, zodat een deploy niet achter een oude cache blijft hangen.
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
         runtimeCaching: [
           {
+            // NetworkFirst: probeer altijd eerst de nieuwste versie van het
+            // netwerk; val alleen terug op de cache als er geen verbinding is.
+            // Voorkomt dat de PWA een verouderde app-versie blijft tonen.
             urlPattern: /^https:\/\/achimpieters\.github\.io\/photobooth\//,
-            handler: 'CacheFirst',
-            options: { cacheName: 'photobooth-cache', expiration: { maxEntries: 50 } },
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'photobooth-cache',
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 50 },
+            },
           },
         ],
       },
