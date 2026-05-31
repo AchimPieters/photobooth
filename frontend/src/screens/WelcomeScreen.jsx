@@ -4,7 +4,7 @@ import { t } from '../utils/i18n'
 
 const BASE = import.meta.env.BASE_URL
 
-export default function WelcomeScreen({ onStartStrip, onStartPassport, onAdmin, licensed, licenseInfo, lang, onChangeLang }) {
+export default function WelcomeScreen({ onStartStrip, onStartPassport, onAdmin, licensed, lang, onChangeLang }) {
   const [pulse, setPulse] = useState(false)
   const tapCount = useRef(0)
   const tapTimer = useRef(null)
@@ -51,11 +51,9 @@ export default function WelcomeScreen({ onStartStrip, onStartPassport, onAdmin, 
         <h1 style={s.title}>Photobooth</h1>
       </div>
 
-      {/* Licentie-status */}
-      {licensed
-        ? <p style={s.licBadge}>✓ {licenseInfo?.licensee}</p>
-        : <p style={s.demoBadge}>{t('demo.badge', lang)}</p>
-      }
+      {/* Status: alleen de demo-melding tonen; bij een geldige licentie geen
+          (groene) licentienaam meer op het startscherm. */}
+      {!licensed && <p style={s.demoBadge}>{t('demo.badge', lang)}</p>}
 
       {/* Keuze-knoppen */}
       <div style={s.modes}>
@@ -129,5 +127,4 @@ const s = {
     fontSize: 13, fontWeight: 700, letterSpacing: 0.5,
     padding: '8px 18px', borderRadius: 20, border: '1px solid rgba(233,69,96,0.3)',
   },
-  licBadge: { color: 'rgba(39,174,96,0.8)', fontSize: 14, fontWeight: 600 },
 }

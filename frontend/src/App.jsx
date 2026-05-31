@@ -40,6 +40,7 @@ export default function App() {
   })
   const [session,    setSession]   = useState(null)
   const sessionRef = useRef(null)
+  const lastActivityRef = useRef(Date.now())
   const [showAdmin,  setShowAdmin] = useState(false)
   const [licensed,   setLicensed]  = useState(false)
   const [licenseInfo, setLicInfo]  = useState(null)
@@ -66,29 +67,33 @@ export default function App() {
   useEffect(() => { sessionRef.current = session }, [session])
 
   // — Inactiviteits-reset —
-  // Op alle schermen behalve welcome (start), done (heeft eigen autoRestart)
-  // en payment (gebruiker wacht op SumUp-callback). Bij elke aanraking
-  // wordt de timer gereset; bij timeout terug naar welcome.
+  // Elke interactie werkt een timestamp bij; deze listener staat altijd aan.
+  useEffect(() => {
+    const bump = () => { lastActivityRef.current = Date.now() }
+    const events = ['touchstart', 'mousedown', 'keydown', 'click']
+    events.forEach(e => window.addEventListener(e, bump, { passive: true }))
+    return () => events.forEach(e => window.removeEventListener(e, bump))
+  }, [])
+
+  // Na X sec zonder interactie terug naar het startscherm. Actief op alle
+  // schermen behalve welcome (is al de start) en done (heeft een eigen
+  // aftel-herstart). Payment is bewust WÉL gedekt: wie bij het betaalscherm
+  // wegloopt zonder te betalen, keert ook terug. Een timestamp + interval is
+  // robuuster dan een geneste timeout en kan niet vastlopen door re-renders.
   useEffect(() => {
     if (showAdmin) return
-    if (screen === 'welcome' || screen === 'done' || screen === 'payment') return
+    if (screen === 'welcome' || screen === 'done') return
 
+    lastActivityRef.current = Date.now() // teller vers bij binnenkomst scherm
     const secs = Math.max(10, config.inactivityResetSecs || 30)
-    let timer = null
-    const reset = () => {
-      clearTimeout(timer)
-      timer = setTimeout(() => {
+    const id = setInterval(() => {
+      if (Date.now() - lastActivityRef.current >= secs * 1000) {
+        clearInterval(id)
         setSession(null)
         setScreen('welcome')
-      }, secs * 1000)
-    }
-    reset()
-    const events = ['touchstart', 'mousedown', 'keydown']
-    events.forEach(e => window.addEventListener(e, reset, { passive: true }))
-    return () => {
-      clearTimeout(timer)
-      events.forEach(e => window.removeEventListener(e, reset))
-    }
+      }
+    }, 1000)
+    return () => clearInterval(id)
   }, [screen, showAdmin])
 
   // — Fotostrip flow —
