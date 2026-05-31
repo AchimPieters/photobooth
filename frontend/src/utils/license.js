@@ -1,5 +1,5 @@
 // Publieke sleutel (ingebakken in de app — alleen voor verificatie)
-const PUBLIC_KEY_JWK = {"key_ops":["verify"],"ext":true,"kty":"EC","x":"AEDYX-U2Wlse1A82TYz4QKWYxWAK_lrLrEpDGR245gI","y":"6c6QGWW4uPTJO_urU6hj9vaPKRxeVjU60lL8BdXUPuI","crv":"P-256"}
+const PUBLIC_KEY_JWK = {"key_ops":["verify"],"ext":true,"kty":"EC","x":"2ZEzRoyepR3YlqLK_0-ZCbPCjNhjch4JzOezYib_QrY","y":"qMXhzTkvqt6THitrFiiya_pPKJl4oN2Rbq7O4TYmejU","crv":"P-256"}
 
 const STORAGE_KEY = 'pb_license'
 
