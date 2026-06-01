@@ -47,9 +47,16 @@ export function getSettings() {
   return { ...DEFAULTS }
 }
 
+// Geeft true bij succes, false als opslaan mislukt (bijv. quota vol door te
+// grote event-templates). De aanroeper kan dan een foutmelding tonen.
 export function saveSettings(partial) {
   const current = getSettings()
-  localStorage.setItem(KEY, JSON.stringify({ ...current, ...partial }))
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ ...current, ...partial }))
+    return true
+  } catch {
+    return false
+  }
 }
 
 export async function hashPassword(pw) {

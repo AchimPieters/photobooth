@@ -10,6 +10,20 @@ const PHOTO_H = mmToPx(45)
 const GAP = mmToPx(2)
 const MARGIN = mmToPx(4) // veilige rand zodat niets tegen de velrand valt
 
+// Hoeveel pasfoto's (35×45 mm) passen er op een vel van dit papierformaat?
+// Max 2 kolommen. Gedeeld door de render én de UI, zodat de getoonde prijs/
+// aantal altijd klopt met wat er daadwerkelijk wordt geprint.
+export function passportGrid(paper) {
+  const sheet = paperPx(paper)
+  const cols = Math.max(1, Math.min(2, Math.floor((sheet.w - 2 * MARGIN + GAP) / (PHOTO_W + GAP))))
+  const rows = Math.max(1, Math.floor((sheet.h - 2 * MARGIN + GAP) / (PHOTO_H + GAP)))
+  return { cols, rows, count: cols * rows }
+}
+
+export function passportCount(paper) {
+  return passportGrid(paper).count
+}
+
 export async function buildPassportStrip(photoDataUrl, options = {}) {
   if (!photoDataUrl) return null
 
@@ -17,12 +31,7 @@ export async function buildPassportStrip(photoDataUrl, options = {}) {
   const sheetW = sheet.w
   const sheetH = sheet.h
 
-  // Hoeveel pasfoto's passen er op dit vel (max 2 kolommen)?
-  const maxCols = Math.max(1, Math.min(2, Math.floor((sheetW - 2 * MARGIN + GAP) / (PHOTO_W + GAP))))
-  const maxRows = Math.max(1, Math.floor((sheetH - 2 * MARGIN + GAP) / (PHOTO_H + GAP)))
-  const cols = maxCols
-  const rows = maxRows
-  const count = cols * rows
+  const { cols, rows, count } = passportGrid(options.paper)
 
   return new Promise((resolve) => {
     const img = new Image()

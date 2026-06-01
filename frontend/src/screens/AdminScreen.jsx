@@ -5,6 +5,7 @@ import { getLicenseInfo, verifyAndParseLicense, saveLicense, removeLicense, getR
 import { formatDate, t } from '../utils/i18n'
 import { useLang } from '../context/LangContext'
 import { buildTemplateGuide } from '../utils/photoStrip'
+import { passportCount } from '../utils/passportStrip'
 import { PAPERS, DEFAULT_PAPER, paperLabel } from '../utils/papers'
 
 // Tweetalige teksten voor de printers-sectie.
@@ -203,6 +204,7 @@ export default function AdminScreen({ onClose }) {
   const [phase, setPhase] = useState('login')
   const [saved,     setSaved]     = useState(false)
   const [pwError,   setPwError]   = useState('')
+  const [saveErr,   setSaveErr]   = useState('')
   const [newPw,     setNewPw]     = useState('')
   const [confirmPw, setConfirmPw] = useState('')
   const savedTimer = useRef(null)
@@ -249,6 +251,10 @@ export default function AdminScreen({ onClose }) {
     const p = form.printers.find(pr => pr.id === form.stripPrinterId) || form.printers[0]
     return p?.paper || DEFAULT_PAPER
   })()
+
+  // Aantal pasfoto's dat op het pasfoto-vel past (voor de prijslabel).
+  const passportPaper = (form.printers.find(pr => pr.id === form.passportPrinterId) || form.printers[0])?.paper || DEFAULT_PAPER
+  const passportN = passportCount(passportPaper)
 
   // Welk papierformaat wordt nu bewerkt in de template-sectie. Standaard het
   // formaat dat de fotostrip gebruikt. Elk formaat heeft een eigen template.
@@ -317,13 +323,14 @@ export default function AdminScreen({ onClose }) {
 
   const save = async () => {
     setPwError('')
+    setSaveErr('')
     let passwordHash = form._passwordHash
     if (newPw) {
       if (newPw !== confirmPw) { setPwError(t('adm.pw.mismatch', lang)); return }
       if (newPw.length < 6)    { setPwError(t('adm.pw.tooshort', lang)); return }
       passwordHash = await hashPassword(newPw)
     }
-    saveSettings({
+    const ok = saveSettings({
       sumupAffiliateKey: form.sumupAffiliateKey.trim(),
       price:             Number(form.price) || 0,
       passportPrice:     Number(form.passportPrice) || 0,
@@ -346,6 +353,7 @@ export default function AdminScreen({ onClose }) {
       passportPrinterId: form.passportPrinterId,
       passwordHash,
     })
+    if (!ok) { setSaveErr(t('adm.save_failed', lang)); return }
     setNewPw(''); setConfirmPw('')
     clearTimeout(savedTimer.current)
     setSaved(true)
@@ -380,7 +388,7 @@ export default function AdminScreen({ onClose }) {
             <input style={s.input} type="number" step="0.01" min="0"
               value={form.price} onChange={e => set('price', e.target.value)} />
           </Field>
-          <Field label={t('adm.pay.passport', lang)}>
+          <Field label={t('adm.pay.passport', lang, { n: passportN })}>
             <input style={s.input} type="number" step="0.01" min="0"
               value={form.passportPrice} onChange={e => set('passportPrice', e.target.value)} />
           </Field>
@@ -558,6 +566,7 @@ export default function AdminScreen({ onClose }) {
           {pwError && <p style={s.errMsg}>{pwError}</p>}
         </Section>
 
+        {saveErr && <p style={{ ...s.errMsg, marginBottom: 10 }}>{saveErr}</p>}
         <button style={saved ? s.savedBtn : s.saveBtn} onClick={save}>
           {saved ? t('adm.saved', lang) : t('adm.save', lang)}
         </button>

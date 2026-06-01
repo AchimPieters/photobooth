@@ -15,8 +15,9 @@ async function main() {
     process.exit(1)
   }
 
-  if (new Date(expires) <= new Date()) {
-    console.error('Vervaldatum moet in de toekomst liggen.')
+  // ISO-datums lexicografisch vergelijken = chronologisch; vandaag is geldig.
+  if (expires < new Date().toISOString().slice(0, 10)) {
+    console.error('Vervaldatum moet vandaag of in de toekomst liggen.')
     process.exit(1)
   }
 

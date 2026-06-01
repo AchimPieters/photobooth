@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
-import config from '../utils/config'
+import config, { paperForProduct } from '../utils/config'
+import { passportCount } from '../utils/passportStrip'
 import { t } from '../utils/i18n'
 
 const BASE = import.meta.env.BASE_URL
@@ -8,6 +9,7 @@ export default function WelcomeScreen({ onStartStrip, onStartPassport, onAdmin, 
   const [pulse, setPulse] = useState(false)
   const tapCount = useRef(0)
   const tapTimer = useRef(null)
+  const passportN = passportCount(paperForProduct('passport'))
 
   useEffect(() => {
     const id = setInterval(() => setPulse(p => !p), 1800)
@@ -68,7 +70,7 @@ export default function WelcomeScreen({ onStartStrip, onStartPassport, onAdmin, 
           <span style={s.modeIcon}>🪪</span>
           <span style={s.modeTitle}>{t('passport.title', lang)}</span>
           <span style={s.modeSub}>{t('passport.sub', lang)}</span>
-          <span style={s.modePrice}>€{config.passportPrice.toFixed(2)} — 4 {lang === 'en' ? 'photos' : "foto's"}</span>
+          <span style={s.modePrice}>€{config.passportPrice.toFixed(2)} — {passportN} {lang === 'en' ? 'photos' : "foto's"}</span>
         </button>
       </div>
     </div>

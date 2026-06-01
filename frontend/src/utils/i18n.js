@@ -101,7 +101,7 @@ const T = {
     'adm.pay.key':        'SumUp Affiliate Key',
     'adm.pay.key_ph':     'Jouw SumUp affiliate key',
     'adm.pay.price':      "Prijs fotostrip (€)",
-    'adm.pay.passport':   "Prijs pasfoto's — 4 stuks (€)",
+    'adm.pay.passport':   "Prijs pasfoto's — {n} stuks (€)",
     'adm.pay.currency':   'Valuta',
     'adm.pay.url':        'Callback basis-URL',
     'adm.booth.section':  '📷 Fotobooth',
@@ -121,6 +121,7 @@ const T = {
     'adm.pw.tooshort':    'Minimaal 6 tekens vereist',
     'adm.save':           'Opslaan',
     'adm.saved':          '✓  Opgeslagen!',
+    'adm.save_failed':    'Opslaan mislukt — opslag vol. Verwijder een template of gebruik een kleinere PNG.',
   },
 
   en: {
@@ -225,7 +226,7 @@ const T = {
     'adm.pay.key':        'SumUp Affiliate Key',
     'adm.pay.key_ph':     'Your SumUp affiliate key',
     'adm.pay.price':      'Photo strip price (€)',
-    'adm.pay.passport':   'Passport photos price — 4 pcs (€)',
+    'adm.pay.passport':   'Passport photos price — {n} pcs (€)',
     'adm.pay.currency':   'Currency',
     'adm.pay.url':        'Callback base URL',
     'adm.booth.section':  '📷 Photo Booth',
@@ -245,6 +246,7 @@ const T = {
     'adm.pw.tooshort':    'Minimum 6 characters required',
     'adm.save':           'Save',
     'adm.saved':          '✓  Saved!',
+    'adm.save_failed':    'Save failed — storage full. Remove a template or use a smaller PNG.',
   },
 }
 

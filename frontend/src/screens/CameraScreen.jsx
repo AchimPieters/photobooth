@@ -12,6 +12,7 @@ export default function CameraScreen({ onComplete, onCancel }) {
   const [flash,     setFlash]     = useState(false)
   const [busy,      setBusy]      = useState(false)
   const timerRef = useRef(null)
+  const completeRef = useRef(null)
 
   useEffect(() => { startCamera() }, [startCamera])
 
@@ -19,7 +20,7 @@ export default function CameraScreen({ onComplete, onCancel }) {
   useEffect(() => {
     if (photos.length >= config.totalPhotos) {
       stopCamera()
-      setTimeout(() => onComplete(photos), 700)
+      completeRef.current = setTimeout(() => onComplete(photos), 700)
     }
   }, [photos, stopCamera, onComplete])
 
@@ -46,7 +47,7 @@ export default function CameraScreen({ onComplete, onCancel }) {
     }, 1000)
   }, [busy, photos.length, takePhoto])
 
-  useEffect(() => () => clearInterval(timerRef.current), [])
+  useEffect(() => () => { clearInterval(timerRef.current); clearTimeout(completeRef.current) }, [])
 
   return (
     <div style={s.root}>

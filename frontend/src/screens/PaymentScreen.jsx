@@ -3,12 +3,12 @@ import config from '../utils/config'
 import { useLang } from '../context/LangContext'
 import { t } from '../utils/i18n'
 
-function buildSumUpUrl(txId, token, price) {
+function buildSumUpUrl(txId, token, price, title) {
   const params = new URLSearchParams({
     'affiliate-key':       config.sumupAffiliateKey,
     amount:                price.toFixed(2),
     currency:              config.currency,
-    title:                 'Fotostrip',
+    title:                 title || 'Fotostrip',
     'foreign-tx-id':       txId,
     'skip-screen-success': 'true',
     callbacksuccess:       `${config.baseUrl}?payment=success&token=${token}`,
@@ -21,7 +21,7 @@ function makeToken() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
-export default function PaymentScreen({ stripDataUrl, paymentStatus, onSuccess, onFail, onBack, price: priceProp, licensed }) {
+export default function PaymentScreen({ stripDataUrl, paymentStatus, onSuccess, onFail, onBack, price: priceProp, productTitle, licensed }) {
   const lang  = useLang()
   const price = priceProp ?? config.price
   const [txId]    = useState(() => `pb-${Date.now()}`)
@@ -36,7 +36,7 @@ export default function PaymentScreen({ stripDataUrl, paymentStatus, onSuccess, 
     const token = makeToken()
     localStorage.setItem('pb_pay_token', token)
     setWaiting(true)
-    window.location.href = buildSumUpUrl(txId, token, price)
+    window.location.href = buildSumUpUrl(txId, token, price, productTitle)
   }
 
   return (
