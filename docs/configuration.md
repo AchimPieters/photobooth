@@ -82,3 +82,58 @@ countdownSecs: 3,  // Seconden voor elke foto
 ```js
 autoRestartSecs: 15,  // Seconden na betaling voor auto-reset
 ```
+
+---
+
+## Printers, papierformaten & event-templates
+
+De app print op de **Canon SELPHY CP1500** (één mediaformaat per printer tegelijk).
+In het admin-paneel (5× tikken op het icoon) koppel je één of meer printers, elk
+met een eigen papierformaat, en wijs je per product een printer toe:
+
+- **Fotostrip** → printer A
+- **Pasfoto's** → printer B
+
+Elk product staat volledig los van het andere. Beide mogen dezelfde printer
+(en hetzelfde papier) gebruiken; dat is de standaard.
+
+### Papierformaten
+Gedefinieerd in `frontend/src/utils/papers.js` (`PAPERS`): printgebied in mm +
+het vaste aantal strip-foto's (`strip`). Standaard: L (89×119 mm, 4 foto's),
+Postcard (100×148 mm, 5), Card (54×86 mm, 3).
+
+### Pasfoto's — maat ligt fysiek vast
+Een pasfoto is **altijd 35×45 mm**, ongeacht het papierformaat. Het papier
+bepaalt alleen hoeveel pasfoto's er op het vel passen (Card→1, L→4, Postcard→6).
+Pasfoto's gebruiken **geen** template, dus de officiële voorschriften kunnen niet
+verstoord worden door een papier- of templatewijziging.
+
+### Event-templates (alleen fotostrip)
+Een template is een **transparante PNG-overlay (300 dpi)** die over de strip
+wordt geprint, **per papierformaat** opgeslagen. Werkwijze in de admin:
+
+1. Kies het papierformaat in de template-sectie.
+2. Download de **ontwerpgids** — die opent op exact de juiste maat, met het juiste
+   aantal fotovakken en (alleen) een footer-zone als je een footer hebt ingesteld.
+3. Ontwerp je overlay op die gids en upload de PNG.
+4. De **live preview** toont de strip met voorbeeldfoto's + jouw overlay, precies
+   zoals geprint wordt. De dekking stel je per papierformaat in.
+
+### Waarborg: template past altijd bij de instellingen
+Bij het uploaden legt de app vast **waarvoor** de template is gemaakt
+(aantal foto's + wel/geen footer). Daarna geldt:
+
+- **Admin** toont groen *"past bij de huidige instellingen"* of rood met wat
+  afwijkt (bijv. footer aan/uit gewijzigd), met een knop *"Toch toepassen —
+  markeer als passend"* als je zeker weet dat het klopt.
+- Gebruikt de strip-printer een papierformaat **zonder** template, dan meldt de
+  admin dat de strip zonder overlay print.
+- **Bij het printen** wordt de overlay **weggelaten** als hij niet (meer) past →
+  liever een schone strip dan een scheve print.
+- Templates van vóór deze functie hebben geen vastgelegde parameters en gelden
+  als "passend" (ze verliezen hun overlay dus niet automatisch).
+
+Omdat het aantal strip-foto's vastligt per papierformaat én de template per
+papierformaat wordt bewaard, lopen aantal en template nooit uit elkaar; de enige
+variabele die nog kan afwijken (footer aan/uit) wordt door bovenstaande waarborg
+afgevangen.
