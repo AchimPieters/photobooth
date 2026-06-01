@@ -22,7 +22,7 @@
  **/
 
 import { describe, it, expect, afterEach } from 'vitest'
-import config, { getConfig } from '../utils/config'
+import config, { getConfig, stripOverlayForPaper, stripTemplateStatus } from '../utils/config'
 import { saveSettings } from '../utils/settings'
 
 describe('AppConfig', () => {
@@ -49,4 +49,37 @@ describe('AppConfig', () => {
   })
 
   afterEach(() => localStorage.clear())
+})
+
+describe('template-waarborg (stripOverlayForPaper / stripTemplateStatus)', () => {
+  afterEach(() => localStorage.clear())
+
+  const base = {
+    printers: [{ id: 'p1', name: 'SELPHY', paper: 'L' }],
+    stripPrinterId: 'p1',
+    stripFooter: 'Event 2026', // footer aan
+    stripTemplates: { L: 'data:image/png;base64,AAAA' },
+  }
+
+  it('past de overlay toe als meta matcht', () => {
+    saveSettings({ ...base, stripTemplateMeta: { L: { photoCount: 4, hasFooter: true } } })
+    expect(stripTemplateStatus('L').matches).toBe(true)
+    expect(stripOverlayForPaper('L')).toMatch(/^data:/)
+  })
+
+  it('laat de overlay weg als de footer-status afwijkt', () => {
+    saveSettings({ ...base, stripTemplateMeta: { L: { photoCount: 4, hasFooter: false } } })
+    expect(stripTemplateStatus('L').matches).toBe(false)
+    expect(stripOverlayForPaper('L')).toBeNull()
+  })
+
+  it('onbekende meta = passend (backwards compatible)', () => {
+    saveSettings({ ...base, stripTemplateMeta: {} })
+    expect(stripOverlayForPaper('L')).toMatch(/^data:/)
+  })
+
+  it('geen template → geen overlay', () => {
+    saveSettings({ printers: base.printers, stripPrinterId: 'p1', stripTemplates: {} })
+    expect(stripOverlayForPaper('L')).toBeNull()
+  })
 })

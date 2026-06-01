@@ -88,6 +88,14 @@ const TPL = {
     badType: 'Kies een PNG-bestand (met transparantie).',
     preview_with: 'Live voorbeeld — template over voorbeeldfoto’s',
     preview_none: 'Live voorbeeld — nog geen template (alleen de strip)',
+    match_ok: '✓ Template past bij de huidige instellingen',
+    match_bad: '⚠️ Template wijkt af van waarvoor hij is gemaakt — bij het printen wordt de overlay weggelaten:',
+    diff_footer_on: 'gemaakt zónder footer, maar de footer staat nu aan',
+    diff_footer_off: 'gemaakt mét footer, maar de footer staat nu uit',
+    diff_count: "aantal foto's",
+    meta_unknown: 'Ontwerp-parameters onbekend (vóór deze versie geüpload) — controleer of de template nog past.',
+    mark_ok: 'Toch toepassen — markeer als passend',
+    no_tpl_strip: 'De fotostrip-printer gebruikt {paper} zonder template — de strip print zonder overlay.',
   },
   en: {
     title: 'Event template (overlay)',
@@ -103,6 +111,14 @@ const TPL = {
     badType: 'Please choose a PNG file (with transparency).',
     preview_with: 'Live preview — template over sample photos',
     preview_none: 'Live preview — no template yet (strip only)',
+    match_ok: '✓ Template matches the current settings',
+    match_bad: '⚠️ Template differs from what it was made for — the overlay will be left out when printing:',
+    diff_footer_on: 'made without footer, but the footer is now on',
+    diff_footer_off: 'made with footer, but the footer is now off',
+    diff_count: 'number of photos',
+    meta_unknown: 'Design parameters unknown (uploaded before this version) — check the template still fits.',
+    mark_ok: 'Apply anyway — mark as matching',
+    no_tpl_strip: 'The photo-strip printer uses {paper} without a template — the strip prints without overlay.',
   },
 }
 
@@ -270,6 +286,7 @@ export default function AdminScreen({ onClose }) {
       stripBg:           c.stripBg,
       stripTemplates:       { ...(c.stripTemplates || {}) },
       stripTemplateOpacities: { ...(c.stripTemplateOpacities || {}) },
+      stripTemplateMeta:    { ...(c.stripTemplateMeta || {}) },
       printers:          (c.printers || []).map(p => ({ ...p })),
       stripPrinterId:    c.stripPrinterId,
       passportPrinterId: c.passportPrinterId,
@@ -338,7 +355,14 @@ export default function AdminScreen({ onClose }) {
     reader.onload = () => {
       const dataUrl = reader.result
       if (dataUrl.length > MAX_TEMPLATE_BYTES) { setTplErr(tpl.tooBig); return }
-      setForm(f => ({ ...f, stripTemplates: { ...f.stripTemplates, [tplPaper]: dataUrl } }))
+      // Leg vast waarvoor deze template is gemaakt: het vaste aantal voor dit
+      // papier + of de footer nu aanstaat. Hiermee kan later gewaarschuwd worden.
+      const meta = { photoCount: stripPhotoCount(tplPaper), hasFooter: !!form.stripFooter.trim() }
+      setForm(f => ({
+        ...f,
+        stripTemplates: { ...f.stripTemplates, [tplPaper]: dataUrl },
+        stripTemplateMeta: { ...f.stripTemplateMeta, [tplPaper]: meta },
+      }))
     }
     reader.onerror = () => setTplErr(tpl.badType)
     reader.readAsDataURL(file)
@@ -351,9 +375,23 @@ export default function AdminScreen({ onClose }) {
       delete next[tplPaper]
       const op = { ...f.stripTemplateOpacities }
       delete op[tplPaper]
-      return { ...f, stripTemplates: next, stripTemplateOpacities: op }
+      const meta = { ...f.stripTemplateMeta }
+      delete meta[tplPaper]
+      return { ...f, stripTemplates: next, stripTemplateOpacities: op, stripTemplateMeta: meta }
     })
   }
+
+  // Vergelijk de bewaarde ontwerp-parameters met de huidige instellingen.
+  const tplMeta    = form.stripTemplateMeta[tplPaper]
+  const tplCurFooter = !!form.stripFooter.trim()
+  const tplDiffs = []
+  if (currentTemplate && tplMeta) {
+    if (tplMeta.hasFooter !== tplCurFooter) tplDiffs.push(tplCurFooter ? tpl.diff_footer_on : tpl.diff_footer_off)
+    if (tplMeta.photoCount !== stripPhotoCount(tplPaper)) tplDiffs.push(`${tpl.diff_count}: ${tplMeta.photoCount} → ${stripPhotoCount(tplPaper)}`)
+  }
+  // Markeer de huidige instellingen als de bedoelde ontwerp-parameters.
+  const markTemplateOk = () =>
+    setForm(f => ({ ...f, stripTemplateMeta: { ...f.stripTemplateMeta, [tplPaper]: { photoCount: stripPhotoCount(tplPaper), hasFooter: tplCurFooter } } }))
 
   const downloadGuide = () => {
     const url = buildTemplateGuide({
@@ -413,6 +451,7 @@ export default function AdminScreen({ onClose }) {
       stripBg:           form.stripBg,
       stripTemplates:       form.stripTemplates,
       stripTemplateOpacities: form.stripTemplateOpacities,
+      stripTemplateMeta:    form.stripTemplateMeta,
       printers:          form.printers.map(p => ({
         id: p.id,
         name: (p.name || '').trim() || 'SELPHY CP1500',
@@ -566,6 +605,13 @@ export default function AdminScreen({ onClose }) {
           <Field label={tpl.title}>
             <p style={s.tplHelp}>{tpl.help}</p>
 
+            {/* Stil ontbrekende template voor het toegewezen strip-papier. */}
+            {!form.stripTemplates[stripPaper] && (
+              <p style={{ ...s.hint, color: 'rgba(255,210,0,0.9)', marginBottom: 10 }}>
+                {tpl.no_tpl_strip.replace('{paper}', paperLabel(stripPaper, lang))}
+              </p>
+            )}
+
             {/* Kies welk papierformaat je bewerkt — elk formaat een eigen template. */}
             <p style={{ ...s.label, marginBottom: 6 }}>{tpl.forPaper}</p>
             <select style={s.input} value={tplPaper} onChange={e => { setTplPaper(e.target.value); setTplErr('') }}>
@@ -610,6 +656,23 @@ export default function AdminScreen({ onClose }) {
                 </button>
               )}
             </div>
+
+            {/* Waarborg: past de template nog bij de huidige instellingen? */}
+            {currentTemplate && (
+              tplMeta
+                ? (tplDiffs.length === 0
+                    ? <p style={{ ...s.hint, color: '#27ae60', marginTop: 12 }}>{tpl.match_ok}</p>
+                    : (
+                      <div style={{ marginTop: 12 }}>
+                        <p style={{ ...s.errMsg, marginBottom: 6 }}>{tpl.match_bad}</p>
+                        <ul style={{ margin: '0 0 10px 18px', color: '#e94560', fontSize: 13, lineHeight: 1.5 }}>
+                          {tplDiffs.map((d, i) => <li key={i}>{d}</li>)}
+                        </ul>
+                        <button style={s.smBtn} onClick={markTemplateOk}>{tpl.mark_ok}</button>
+                      </div>
+                    ))
+                : <p style={{ ...s.hint, marginTop: 12 }}>{tpl.meta_unknown}</p>
+            )}
 
             {/* Dekking geldt per papierformaat (alleen relevant met template). */}
             {currentTemplate && (

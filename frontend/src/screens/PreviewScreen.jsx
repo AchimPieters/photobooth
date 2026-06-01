@@ -23,7 +23,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { buildPrintSheet } from '../utils/photoStrip'
-import config, { paperForProduct, stripTemplateForPaper, stripTemplateOpacityForPaper } from '../utils/config'
+import config, { paperForProduct, stripOverlayForPaper, stripTemplateOpacityForPaper } from '../utils/config'
 import { useLang } from '../context/LangContext'
 import { t } from '../utils/i18n'
 
@@ -33,12 +33,15 @@ export default function PreviewScreen({ photos, onPay, onRetry }) {
   const [loading,  setLoading]    = useState(true)
 
   useEffect(() => {
+    const paper = paperForProduct('strip')
+    // stripOverlayForPaper laat de overlay weg als de template niet (meer) bij
+    // de huidige strip-instellingen past → liever een schone strip dan scheef.
     buildPrintSheet(photos, {
-      paper: paperForProduct('strip'),
+      paper,
       footerText: config.stripFooter,
       bgColor: config.stripBg,
-      overlay: stripTemplateForPaper(paperForProduct('strip')),
-      overlayOpacity: stripTemplateOpacityForPaper(paperForProduct('strip')),
+      overlay: stripOverlayForPaper(paper),
+      overlayOpacity: stripTemplateOpacityForPaper(paper),
     })
       .then(url => { setStripUrl(url); setLoading(false) })
   }, [photos])

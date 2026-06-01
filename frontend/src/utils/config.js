@@ -44,6 +44,7 @@ export function getConfig() {
     stripBg:           s.stripBg,
     stripTemplates:       s.stripTemplates || {},
     stripTemplateOpacities: s.stripTemplateOpacities || {},
+    stripTemplateMeta:    s.stripTemplateMeta || {},
     printers,
     stripPrinterId,
     passportPrinterId: s.passportPrinterId || 'p1',
@@ -72,6 +73,31 @@ export function stripTemplateOpacityForPaper(paper) {
   const c = getConfig()
   const v = c.stripTemplateOpacities && c.stripTemplateOpacities[paper]
   return typeof v === 'number' ? v : 1
+}
+
+// Bepaalt of een opgeslagen template nog past bij de huidige strip-instellingen.
+// Vergelijkt de bewaarde ontwerp-parameters (aantal foto's + footer) met de
+// actuele situatie. Onbekende meta (template van vóór deze functie) = passend,
+// zodat bestaande setups niet stilletjes hun overlay verliezen.
+export function stripTemplateStatus(paper) {
+  const c = getConfig()
+  const url = c.stripTemplates && c.stripTemplates[paper]
+  if (!url) return { hasTemplate: false, matches: false, meta: null }
+  const meta = c.stripTemplateMeta && c.stripTemplateMeta[paper]
+  const curFooter = !!(c.stripFooter && c.stripFooter.trim())
+  const curCount = stripPhotoCount(paper)
+  if (!meta) return { hasTemplate: true, matches: true, meta: null, curFooter, curCount }
+  const matches = meta.hasFooter === curFooter && meta.photoCount === curCount
+  return { hasTemplate: true, matches, meta, curFooter, curCount }
+}
+
+// De overlay-data-URL voor de print, of null als er geen (passende) template is.
+// Bij een mismatch wordt de overlay bewust weggelaten → liever een schone strip
+// dan een scheve print.
+export function stripOverlayForPaper(paper) {
+  const st = stripTemplateStatus(paper)
+  if (!st.hasTemplate || !st.matches) return null
+  return getConfig().stripTemplates[paper]
 }
 
 // Proxy zodat bestaande `config.price` etc. altijd vers uit localStorage leest

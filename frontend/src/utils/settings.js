@@ -41,6 +41,10 @@ const DEFAULTS = {
   stripTemplates:       {},
   // Dekking per papierformaat (map papier-id → 0..1), net als stripTemplates.
   stripTemplateOpacities: {},
+  // Ontwerp-parameters per template (map papier-id → { photoCount, hasFooter }):
+  // waarvoor de template is gemaakt. Hiermee waarschuwt de admin bij afwijkende
+  // instellingen en laat de print de overlay weg als die niet meer past.
+  stripTemplateMeta: {},
   baseUrl:            '',
   passwordHash:       '',
   language:           'nl',
@@ -78,6 +82,7 @@ export function getSettings() {
         }
       }
       delete merged.stripTemplateOpacity
+      if (!merged.stripTemplateMeta || typeof merged.stripTemplateMeta !== 'object') merged.stripTemplateMeta = {}
       return merged
     }
   } catch {}
