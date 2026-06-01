@@ -1,8 +1,31 @@
+/**
+   Copyright 2026 Achim Pieters | StudioPieters®
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NON INFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+   WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+   for more information visit https://www.studiopieters.nl
+ **/
+
 const T = {
   nl: {
     // WelcomeScreen
     'strip.title':       'Fotostrip',
-    'strip.sub':         "4 foto's · direct printen",
+    'strip.sub':         "{n} foto's · direct printen",
     'passport.title':    "Pasfoto's",
     'passport.sub':      'Officieel formaat 35×45 mm',
     'demo.badge':        'DEMO — betalen & printen uitgeschakeld',
@@ -101,11 +124,11 @@ const T = {
     'adm.pay.key':        'SumUp Affiliate Key',
     'adm.pay.key_ph':     'Jouw SumUp affiliate key',
     'adm.pay.price':      "Prijs fotostrip (€)",
-    'adm.pay.passport':   "Prijs pasfoto's — 4 stuks (€)",
+    'adm.pay.passport':   "Prijs pasfoto's — {n} stuks (€)",
     'adm.pay.currency':   'Valuta',
     'adm.pay.url':        'Callback basis-URL',
     'adm.booth.section':  '📷 Fotobooth',
-    'adm.booth.photos':   "Aantal foto's (1–8)",
+    'adm.booth.photos_info': "🎞️ {n} foto's per strip op {paper} — vast per papierformaat, zodat de strip altijd bij de event-template past.",
     'adm.booth.countdown':'Aftelling (1–10 sec)',
     'adm.booth.restart':  'Auto-herstart na betaling (5–120 sec)',
     'adm.booth.idle':     'Reset bij inactiviteit (10–300 sec)',
@@ -121,12 +144,13 @@ const T = {
     'adm.pw.tooshort':    'Minimaal 6 tekens vereist',
     'adm.save':           'Opslaan',
     'adm.saved':          '✓  Opgeslagen!',
+    'adm.save_failed':    'Opslaan mislukt — opslag vol. Verwijder een template of gebruik een kleinere PNG.',
   },
 
   en: {
     // WelcomeScreen
     'strip.title':       'Photo Strip',
-    'strip.sub':         '4 photos · instant print',
+    'strip.sub':         '{n} photos · instant print',
     'passport.title':    'Passport Photos',
     'passport.sub':      'Official format 35×45 mm',
     'demo.badge':        'DEMO — payment & printing disabled',
@@ -225,11 +249,11 @@ const T = {
     'adm.pay.key':        'SumUp Affiliate Key',
     'adm.pay.key_ph':     'Your SumUp affiliate key',
     'adm.pay.price':      'Photo strip price (€)',
-    'adm.pay.passport':   'Passport photos price — 4 pcs (€)',
+    'adm.pay.passport':   'Passport photos price — {n} pcs (€)',
     'adm.pay.currency':   'Currency',
     'adm.pay.url':        'Callback base URL',
     'adm.booth.section':  '📷 Photo Booth',
-    'adm.booth.photos':   'Number of photos (1–8)',
+    'adm.booth.photos_info': '🎞️ {n} photos per strip on {paper} — fixed per paper size, so the strip always matches the event template.',
     'adm.booth.countdown':'Countdown (1–10 sec)',
     'adm.booth.restart':  'Auto-restart after payment (5–120 sec)',
     'adm.booth.idle':     'Reset on inactivity (10–300 sec)',
@@ -245,6 +269,7 @@ const T = {
     'adm.pw.tooshort':    'Minimum 6 characters required',
     'adm.save':           'Save',
     'adm.saved':          '✓  Saved!',
+    'adm.save_failed':    'Save failed — storage full. Remove a template or use a smaller PNG.',
   },
 }
 

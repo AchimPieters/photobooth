@@ -1,14 +1,37 @@
+/**
+   Copyright 2026 Achim Pieters | StudioPieters®
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NON INFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+   WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+   for more information visit https://www.studiopieters.nl
+ **/
+
 import React, { useState, useEffect } from 'react'
 import config from '../utils/config'
 import { useLang } from '../context/LangContext'
 import { t } from '../utils/i18n'
 
-function buildSumUpUrl(txId, token, price) {
+function buildSumUpUrl(txId, token, price, title) {
   const params = new URLSearchParams({
     'affiliate-key':       config.sumupAffiliateKey,
     amount:                price.toFixed(2),
     currency:              config.currency,
-    title:                 'Fotostrip',
+    title:                 title || 'Fotostrip',
     'foreign-tx-id':       txId,
     'skip-screen-success': 'true',
     callbacksuccess:       `${config.baseUrl}?payment=success&token=${token}`,
@@ -21,7 +44,7 @@ function makeToken() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
-export default function PaymentScreen({ stripDataUrl, paymentStatus, onSuccess, onFail, onBack, price: priceProp, licensed }) {
+export default function PaymentScreen({ stripDataUrl, paymentStatus, onSuccess, onFail, onBack, price: priceProp, productTitle, licensed }) {
   const lang  = useLang()
   const price = priceProp ?? config.price
   const [txId]    = useState(() => `pb-${Date.now()}`)
@@ -36,7 +59,7 @@ export default function PaymentScreen({ stripDataUrl, paymentStatus, onSuccess, 
     const token = makeToken()
     localStorage.setItem('pb_pay_token', token)
     setWaiting(true)
-    window.location.href = buildSumUpUrl(txId, token, price)
+    window.location.href = buildSumUpUrl(txId, token, price, productTitle)
   }
 
   return (

@@ -1,3 +1,26 @@
+/**
+   Copyright 2026 Achim Pieters | StudioPieters®
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NON INFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+   WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+   for more information visit https://www.studiopieters.nl
+ **/
+
 const KEY = 'pb_settings'
 
 const DEFAULTS = {
@@ -5,7 +28,9 @@ const DEFAULTS = {
   passportPrice:     Number(import.meta.env.VITE_PASSPORT_PRICE ?? 10.00),
   currency:          'EUR',
   sumupAffiliateKey: '',
-  totalPhotos:       4,
+  // Aantal strip-foto's is GEEN instelling meer: het ligt vast per
+  // papierformaat (zie PAPERS[...].strip in papers.js) en wordt afgeleid in
+  // config.getConfig(). Zo blijft het altijd consistent met de event-template.
   countdownSecs:     3,
   autoRestartSecs:   15,
   stripFooter:       'Photobooth ✦ 2026',
@@ -14,7 +39,8 @@ const DEFAULTS = {
   // overlay over de fotostrip geprint. Map papier-id → data-URL, bijv.
   // { L: 'data:...', postcard: 'data:...' }. Leeg = geen template.
   stripTemplates:       {},
-  stripTemplateOpacity: 1,
+  // Dekking per papierformaat (map papier-id → 0..1), net als stripTemplates.
+  stripTemplateOpacities: {},
   baseUrl:            '',
   passwordHash:       '',
   language:           'nl',
@@ -41,15 +67,33 @@ export function getSettings() {
       }
       delete merged.stripTemplate
       if (!merged.stripTemplates || typeof merged.stripTemplates !== 'object') merged.stripTemplates = {}
+      // Migratie: oude globale dekking → per-papier map voor elk papier dat een
+      // template heeft.
+      if (!merged.stripTemplateOpacities || typeof merged.stripTemplateOpacities !== 'object') merged.stripTemplateOpacities = {}
+      if (typeof merged.stripTemplateOpacity === 'number') {
+        for (const paper of Object.keys(merged.stripTemplates)) {
+          if (merged.stripTemplateOpacities[paper] === undefined) {
+            merged.stripTemplateOpacities[paper] = merged.stripTemplateOpacity
+          }
+        }
+      }
+      delete merged.stripTemplateOpacity
       return merged
     }
   } catch {}
   return { ...DEFAULTS }
 }
 
+// Geeft true bij succes, false als opslaan mislukt (bijv. quota vol door te
+// grote event-templates). De aanroeper kan dan een foutmelding tonen.
 export function saveSettings(partial) {
   const current = getSettings()
-  localStorage.setItem(KEY, JSON.stringify({ ...current, ...partial }))
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ ...current, ...partial }))
+    return true
+  } catch {
+    return false
+  }
 }
 
 export async function hashPassword(pw) {

@@ -1,11 +1,35 @@
+/**
+   Copyright 2026 Achim Pieters | StudioPieters®
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NON INFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+   WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+   for more information visit https://www.studiopieters.nl
+ **/
+
 import React, { useState, useRef, useEffect } from 'react'
 import { getSettings, saveSettings, verifyPassword, hashPassword } from '../utils/settings'
 import { getConfig } from '../utils/config'
 import { getLicenseInfo, verifyAndParseLicense, saveLicense, removeLicense, getRawLicense } from '../utils/license'
 import { formatDate, t } from '../utils/i18n'
 import { useLang } from '../context/LangContext'
-import { buildTemplateGuide } from '../utils/photoStrip'
-import { PAPERS, DEFAULT_PAPER, paperLabel } from '../utils/papers'
+import { buildTemplateGuide, buildStrip } from '../utils/photoStrip'
+import { passportCount } from '../utils/passportStrip'
+import { PAPERS, DEFAULT_PAPER, paperLabel, stripPhotoCount, paperPx } from '../utils/papers'
 
 // Tweetalige teksten voor de printers-sectie.
 const PRN = {
@@ -34,6 +58,19 @@ const PRN = {
 // Maximale opslag voor een geüploade template (localStorage is ~5MB).
 const MAX_TEMPLATE_BYTES = 3.5 * 1024 * 1024
 
+// Genereert een gekleurde voorbeeldfoto (SVG data-URL) voor de live preview,
+// zodat de operator ziet hoe de template over de foto's valt.
+function dummyPhoto(i, total) {
+  const hue = Math.round((i / Math.max(1, total)) * 320)
+  const svg =
+    `<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300'>` +
+    `<rect width='100%' height='100%' fill='hsl(${hue},45%,55%)'/>` +
+    `<text x='50%' y='50%' font-size='150' fill='rgba(255,255,255,0.65)' ` +
+    `text-anchor='middle' dominant-baseline='central' font-family='sans-serif'>${i + 1}</text>` +
+    `</svg>`
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
+}
+
 // Eigen tweetalige teksten voor de event-template-sectie (de centrale
 // i18n-tabel wordt hier bewust niet voor gebruikt).
 const TPL = {
@@ -49,6 +86,8 @@ const TPL = {
     opacity: 'Template-dekking',
     tooBig: 'Bestand te groot om op te slaan. Gebruik een kleinere/gecomprimeerde PNG.',
     badType: 'Kies een PNG-bestand (met transparantie).',
+    preview_with: 'Live voorbeeld — template over voorbeeldfoto’s',
+    preview_none: 'Live voorbeeld — nog geen template (alleen de strip)',
   },
   en: {
     title: 'Event template (overlay)',
@@ -62,6 +101,8 @@ const TPL = {
     opacity: 'Template opacity',
     tooBig: 'File too large to store. Use a smaller/compressed PNG.',
     badType: 'Please choose a PNG file (with transparency).',
+    preview_with: 'Live preview — template over sample photos',
+    preview_none: 'Live preview — no template yet (strip only)',
   },
 }
 
@@ -203,6 +244,7 @@ export default function AdminScreen({ onClose }) {
   const [phase, setPhase] = useState('login')
   const [saved,     setSaved]     = useState(false)
   const [pwError,   setPwError]   = useState('')
+  const [saveErr,   setSaveErr]   = useState('')
   const [newPw,     setNewPw]     = useState('')
   const [confirmPw, setConfirmPw] = useState('')
   const savedTimer = useRef(null)
@@ -221,14 +263,13 @@ export default function AdminScreen({ onClose }) {
       passportPrice:     String(c.passportPrice),
       currency:          c.currency,
       baseUrl:           c.baseUrl,
-      totalPhotos:       String(c.totalPhotos),
       countdownSecs:     String(c.countdownSecs),
       autoRestartSecs:    String(c.autoRestartSecs),
       inactivityResetSecs: String(c.inactivityResetSecs),
       stripFooter:       c.stripFooter,
       stripBg:           c.stripBg,
       stripTemplates:       { ...(c.stripTemplates || {}) },
-      stripTemplateOpacity: c.stripTemplateOpacity ?? 1,
+      stripTemplateOpacities: { ...(c.stripTemplateOpacities || {}) },
       printers:          (c.printers || []).map(p => ({ ...p })),
       stripPrinterId:    c.stripPrinterId,
       passportPrinterId: c.passportPrinterId,
@@ -250,10 +291,42 @@ export default function AdminScreen({ onClose }) {
     return p?.paper || DEFAULT_PAPER
   })()
 
+  // Aantal pasfoto's dat op het pasfoto-vel past (voor de prijslabel).
+  const passportPaper = (form.printers.find(pr => pr.id === form.passportPrinterId) || form.printers[0])?.paper || DEFAULT_PAPER
+  const passportN = passportCount(passportPaper)
+
+  // Vast aantal strip-foto's voor het strip-papier (afgeleid, niet instelbaar).
+  const stripN = stripPhotoCount(stripPaper)
+
   // Welk papierformaat wordt nu bewerkt in de template-sectie. Standaard het
   // formaat dat de fotostrip gebruikt. Elk formaat heeft een eigen template.
   const [tplPaper, setTplPaper] = useState(stripPaper)
   const currentTemplate = form.stripTemplates[tplPaper] || ''
+  const currentOpacity = form.stripTemplateOpacities[tplPaper] ?? 1
+
+  // Live WYSIWYG-preview: de strip met voorbeeldfoto's, footer, achtergrond en
+  // de template als overlay — exact zoals geprint wordt.
+  const [previewUrl, setPreviewUrl] = useState(null)
+  useEffect(() => {
+    let cancelled = false
+    const sheet = paperPx(tplPaper)
+    const count = stripPhotoCount(tplPaper)
+    const photos = Array.from({ length: count }, (_, i) => dummyPhoto(i, count))
+    const id = setTimeout(() => {
+      buildStrip(photos, {
+        width:  Math.round(sheet.w / 2),
+        height: sheet.h,
+        footerText: form.stripFooter.trim(),
+        bgColor: form.stripBg,
+        overlay: currentTemplate || null,
+        overlayOpacity: currentOpacity,
+      }).then(url => { if (!cancelled) setPreviewUrl(url) })
+    }, 200) // kleine debounce tijdens typen
+    return () => { cancelled = true; clearTimeout(id) }
+  }, [tplPaper, currentTemplate, currentOpacity, form.stripFooter, form.stripBg])
+
+  const setOpacity = (val) =>
+    setForm(f => ({ ...f, stripTemplateOpacities: { ...f.stripTemplateOpacities, [tplPaper]: val } }))
 
   const onTemplateFile = (e) => {
     const file = e.target.files && e.target.files[0]
@@ -276,14 +349,17 @@ export default function AdminScreen({ onClose }) {
     setForm(f => {
       const next = { ...f.stripTemplates }
       delete next[tplPaper]
-      return { ...f, stripTemplates: next }
+      const op = { ...f.stripTemplateOpacities }
+      delete op[tplPaper]
+      return { ...f, stripTemplates: next, stripTemplateOpacities: op }
     })
   }
 
   const downloadGuide = () => {
     const url = buildTemplateGuide({
       paper: tplPaper,
-      photoCount: Math.max(1, Math.min(8, parseInt(form.totalPhotos) || 4)),
+      photoCount: stripPhotoCount(tplPaper),
+      hasFooter: !!form.stripFooter.trim(),
     })
     const a = document.createElement('a')
     a.href = url
@@ -317,26 +393,26 @@ export default function AdminScreen({ onClose }) {
 
   const save = async () => {
     setPwError('')
+    setSaveErr('')
     let passwordHash = form._passwordHash
     if (newPw) {
       if (newPw !== confirmPw) { setPwError(t('adm.pw.mismatch', lang)); return }
       if (newPw.length < 6)    { setPwError(t('adm.pw.tooshort', lang)); return }
       passwordHash = await hashPassword(newPw)
     }
-    saveSettings({
+    const ok = saveSettings({
       sumupAffiliateKey: form.sumupAffiliateKey.trim(),
       price:             Number(form.price) || 0,
       passportPrice:     Number(form.passportPrice) || 0,
       currency:          form.currency.trim().toUpperCase() || 'EUR',
       baseUrl:           form.baseUrl.trim(),
-      totalPhotos:       Math.max(1, Math.min(8,   parseInt(form.totalPhotos)    || 4)),
       countdownSecs:     Math.max(1, Math.min(10,  parseInt(form.countdownSecs)  || 3)),
       autoRestartSecs:    Math.max(5,  Math.min(120, parseInt(form.autoRestartSecs)    || 15)),
       inactivityResetSecs: Math.max(10, Math.min(300, parseInt(form.inactivityResetSecs) || 30)),
       stripFooter:       form.stripFooter,
       stripBg:           form.stripBg,
       stripTemplates:       form.stripTemplates,
-      stripTemplateOpacity: form.stripTemplateOpacity,
+      stripTemplateOpacities: form.stripTemplateOpacities,
       printers:          form.printers.map(p => ({
         id: p.id,
         name: (p.name || '').trim() || 'SELPHY CP1500',
@@ -346,6 +422,7 @@ export default function AdminScreen({ onClose }) {
       passportPrinterId: form.passportPrinterId,
       passwordHash,
     })
+    if (!ok) { setSaveErr(t('adm.save_failed', lang)); return }
     setNewPw(''); setConfirmPw('')
     clearTimeout(savedTimer.current)
     setSaved(true)
@@ -380,7 +457,7 @@ export default function AdminScreen({ onClose }) {
             <input style={s.input} type="number" step="0.01" min="0"
               value={form.price} onChange={e => set('price', e.target.value)} />
           </Field>
-          <Field label={t('adm.pay.passport', lang)}>
+          <Field label={t('adm.pay.passport', lang, { n: passportN })}>
             <input style={s.input} type="number" step="0.01" min="0"
               value={form.passportPrice} onChange={e => set('passportPrice', e.target.value)} />
           </Field>
@@ -397,10 +474,7 @@ export default function AdminScreen({ onClose }) {
 
         {/* ── Fotobooth ── */}
         <Section title={t('adm.booth.section', lang)}>
-          <Field label={t('adm.booth.photos', lang)}>
-            <input style={s.input} type="number" min="1" max="8"
-              value={form.totalPhotos} onChange={e => set('totalPhotos', e.target.value)} />
-          </Field>
+          <p style={s.tplHelp}>{t('adm.booth.photos_info', lang, { n: stripN, paper: paperLabel(stripPaper, lang) })}</p>
           <Field label={t('adm.booth.countdown', lang)}>
             <input style={s.input} type="number" min="1" max="10"
               value={form.countdownSecs} onChange={e => set('countdownSecs', e.target.value)} />
@@ -502,18 +576,23 @@ export default function AdminScreen({ onClose }) {
               ))}
             </select>
 
+            <p style={{ ...s.hint, marginTop: 8 }}>
+              {t('adm.booth.photos_info', lang, { n: stripPhotoCount(tplPaper), paper: paperLabel(tplPaper, lang) })}
+            </p>
+
             <div style={{ height: 12 }} />
 
             <button style={s.tplGuideBtn} onClick={downloadGuide}>{tpl.guide}</button>
 
-            {currentTemplate
-              ? (
-                <div style={s.tplPreviewWrap}>
-                  <img src={currentTemplate} alt="template" style={s.tplPreview} />
-                </div>
-              )
-              : <p style={{ ...s.hint, marginTop: 10 }}>{tpl.none}</p>
-            }
+            {/* Live preview: voorbeeldstrip met de template als overlay. */}
+            <div style={s.tplPreviewWrap}>
+              {previewUrl
+                ? <img src={previewUrl} alt="preview" style={s.tplPreview} />
+                : <p style={s.hint}>…</p>}
+            </div>
+            <p style={{ ...s.hint, marginTop: 6, textAlign: 'center' }}>
+              {currentTemplate ? tpl.preview_with : tpl.preview_none}
+            </p>
 
             {tplErr && <p style={s.errMsg}>{tplErr}</p>}
 
@@ -532,12 +611,13 @@ export default function AdminScreen({ onClose }) {
               )}
             </div>
 
-            {Object.keys(form.stripTemplates).length > 0 && (
+            {/* Dekking geldt per papierformaat (alleen relevant met template). */}
+            {currentTemplate && (
               <div style={{ marginTop: 16 }}>
-                <p style={s.label}>{tpl.opacity} — {Math.round((form.stripTemplateOpacity ?? 1) * 100)}%</p>
+                <p style={s.label}>{tpl.opacity} — {Math.round(currentOpacity * 100)}%</p>
                 <input type="range" min="0" max="100" style={{ width: '100%' }}
-                  value={Math.round((form.stripTemplateOpacity ?? 1) * 100)}
-                  onChange={e => set('stripTemplateOpacity', Number(e.target.value) / 100)} />
+                  value={Math.round(currentOpacity * 100)}
+                  onChange={e => setOpacity(Number(e.target.value) / 100)} />
               </div>
             )}
           </Field>
@@ -558,6 +638,7 @@ export default function AdminScreen({ onClose }) {
           {pwError && <p style={s.errMsg}>{pwError}</p>}
         </Section>
 
+        {saveErr && <p style={{ ...s.errMsg, marginBottom: 10 }}>{saveErr}</p>}
         <button style={saved ? s.savedBtn : s.saveBtn} onClick={save}>
           {saved ? t('adm.saved', lang) : t('adm.save', lang)}
         </button>

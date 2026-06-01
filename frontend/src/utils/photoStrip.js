@@ -1,4 +1,27 @@
 /**
+   Copyright 2026 Achim Pieters | StudioPieters®
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NON INFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+   WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+   for more information visit https://www.studiopieters.nl
+ **/
+
+/**
  * Fotostrip + print-vel voor de Canon SELPHY CP1500.
  *
  * De SELPHY is een dye-sub printer met één vast mediaformaat tegelijk. We
@@ -212,6 +235,10 @@ export function buildTemplateGuide(options = {}) {
   const w = Math.round(sheetPx.w / 2) // één strip = halve velbreedte
   const h = sheetPx.h
   const photoCount = Math.max(1, Math.min(8, options.photoCount || 4))
+  // Volg de werkelijke footer-status van de strip: anders reserveert de gids
+  // een footer-zone die de echte print niet heeft (of omgekeerd) → template
+  // past niet meer. Default true voor terugwaartse compatibiliteit.
+  const hasFooter = options.hasFooter !== false
 
   const canvas = document.createElement('canvas')
   canvas.width = w
@@ -222,7 +249,7 @@ export function buildTemplateGuide(options = {}) {
   // transparantie ziet.
   drawChecker(ctx, w, h)
 
-  const layout = stripLayout(w, h, photoCount, true)
+  const layout = stripLayout(w, h, photoCount, hasFooter)
 
   // Max-kader / bleed (volledige canvas).
   ctx.strokeStyle = '#e0245e'

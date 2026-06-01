@@ -1,4 +1,28 @@
+/**
+   Copyright 2026 Achim Pieters | StudioPieters®
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NON INFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+   WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+   for more information visit https://www.studiopieters.nl
+ **/
+
 import React, { useState, useCallback, useEffect, useRef } from 'react'
+import { createPortal }           from 'react-dom'
 import WelcomeScreen              from './screens/WelcomeScreen'
 import CameraScreen               from './screens/CameraScreen'
 import PreviewScreen              from './screens/PreviewScreen'
@@ -32,14 +56,47 @@ function readPaymentResult() {
   return status
 }
 
+// De sessie (mode + gerenderde strip) leeft alleen in het geheugen, maar de
+// SumUp-success-callback is een volledige page-load: state gaat verloren. We
+// bewaren het daarom kort in localStorage vóór de redirect en herstellen het
+// bij terugkeer, zodat DoneScreen de strip kan tonen én printen.
+const PENDING_KEY = 'pb_pending_session'
+
+function savePendingSession(session) {
+  try {
+    localStorage.setItem(PENDING_KEY, JSON.stringify({
+      mode: session.mode, stripDataUrl: session.stripDataUrl,
+    }))
+  } catch {} // quota-overschrijding: dan val we na success terug op welcome
+}
+function readPendingSession() {
+  try {
+    const raw = localStorage.getItem(PENDING_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
+}
+function clearPendingSession() {
+  localStorage.removeItem(PENDING_KEY)
+}
+
 export default function App() {
-  const [screen,    setScreen]    = useState(() => {
+  const [boot] = useState(() => {
     const result = readPaymentResult()
-    if (result === 'success') return 'done'
-    // 'fail' zonder actieve sessie: stuur terug naar welcome (session is null bij herstart)
-    return 'welcome'
+    if (result === 'success') {
+      // Strip + mode terughalen die vóór de redirect zijn bewaard.
+      const pending = readPendingSession()
+      clearPendingSession()
+      if (pending?.stripDataUrl) {
+        return { screen: 'done', session: { ...pending, paymentStatus: 'success' } }
+      }
+    } else {
+      // 'fail' of normale start: eventuele restanten opruimen.
+      clearPendingSession()
+    }
+    return { screen: 'welcome', session: null }
   })
-  const [session,    setSession]   = useState(null)
+  const [screen,    setScreen]    = useState(boot.screen)
+  const [session,    setSession]   = useState(boot.session)
   const sessionRef = useRef(null)
   const lastActivityRef = useRef(Date.now())
   const [showAdmin,  setShowAdmin] = useState(false)
@@ -66,6 +123,12 @@ export default function App() {
     return () => clearInterval(id)
   }, [refreshLicense])
   useEffect(() => { sessionRef.current = session }, [session])
+
+  // Zodra we op het betaalscherm staan: sessie bewaren zodat de strip de
+  // SumUp-redirect overleeft en op DoneScreen geprint kan worden.
+  useEffect(() => {
+    if (screen === 'payment' && session?.stripDataUrl) savePendingSession(session)
+  }, [screen, session])
 
   // Stem het print-papierformaat (@page) af op het product van de sessie,
   // zodat de SELPHY met het juiste formaat print. Bij geen sessie: strip-default.
@@ -151,6 +214,7 @@ export default function App() {
   }, [])
 
   const restart = useCallback(() => {
+    clearPendingSession()
     setSession(null)
     setScreen('welcome')
   }, [])
@@ -212,6 +276,7 @@ export default function App() {
           stripDataUrl={session.stripDataUrl}
           paymentStatus={session.paymentStatus}
           price={paymentPrice}
+          productTitle={session.mode === 'passport' ? "Pasfoto's" : 'Fotostrip'}
           licensed={licensed}
           onSuccess={onPaymentSuccess}
           onFail={onPaymentFail}
@@ -226,12 +291,18 @@ export default function App() {
         />
       )}
 
-      {/* Verborgen print-container */}
-      <div id="print-strip" style={{ display: 'none' }}>
-        {session?.stripDataUrl && (
-          <img src={session.stripDataUrl} alt="strip" />
-        )}
-      </div>
+      {/* Verborgen print-container — via een portal als directe body-child.
+          Anders zou de @media print-regel `body > * { display:none }` op #root
+          ook deze geneste container verbergen (een display:none-ouder kan niet
+          door een kind worden opgeheven), en bleef de print leeg. */}
+      {createPortal(
+        <div id="print-strip" style={{ display: 'none' }}>
+          {session?.stripDataUrl && (
+            <img src={session.stripDataUrl} alt="strip" />
+          )}
+        </div>,
+        document.body,
+      )}
 
       {showAdmin && <AdminScreen onClose={() => {
         setShowAdmin(false)

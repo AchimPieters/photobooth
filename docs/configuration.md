@@ -58,10 +58,20 @@ In `frontend/src/utils/config.js`:
 stripFooter: 'Jouw Evenement ✦ 2026',
 ```
 
-### Aantal foto's
+### Aantal foto's per strip
+Dit is **geen vrije instelling** meer: het aantal ligt vast per papierformaat,
+zodat het altijd matcht met de per-formaat opgeslagen event-template (net als
+bij pasfoto's). Pas het aan in `frontend/src/utils/papers.js` via het
+`strip`-veld per formaat:
 ```js
-totalPhotos: 4,   // Verander naar 3 of 6
+export const PAPERS = {
+  postcard: { …, strip: 5 },  // 5 foto's per strip
+  L:        { …, strip: 4 },  // 4 foto's per strip
+  card:     { …, strip: 3 },  // 3 foto's per strip
+}
 ```
+In de admin zie je per gekozen strip-printer/papierformaat hoeveel foto's de
+strip krijgt.
 
 ### Aftelling
 ```js

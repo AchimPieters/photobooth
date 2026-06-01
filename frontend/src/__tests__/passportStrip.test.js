@@ -21,35 +21,28 @@
    for more information visit https://www.studiopieters.nl
  **/
 
-import { describe, it, expect, beforeEach } from 'vitest'
-import { getSettings, saveSettings } from '../utils/settings'
+import { describe, it, expect } from 'vitest'
+import { passportGrid, passportCount } from '../utils/passportStrip'
 
-const KEY = 'pb_settings'
-
-describe('settings — stripTemplates per papierformaat', () => {
-  beforeEach(() => localStorage.clear())
-
-  it('default heeft een lege stripTemplates-map', () => {
-    const s = getSettings()
-    expect(s.stripTemplates).toEqual({})
+describe('passportGrid / passportCount', () => {
+  it('L-formaat (89×119 mm) → 2×2 = 4 pasfoto\'s', () => {
+    expect(passportGrid('L')).toMatchObject({ cols: 2, rows: 2, count: 4 })
+    expect(passportCount('L')).toBe(4)
   })
 
-  it('migreert oude losse stripTemplate naar de map onder het strip-papier', () => {
-    // Simuleer opgeslagen oude data (losse template + L-printer).
-    localStorage.setItem(KEY, JSON.stringify({
-      stripTemplate: 'data:image/png;base64,OLD',
-      printers: [{ id: 'p1', name: 'SELPHY', paper: 'L' }],
-      stripPrinterId: 'p1',
-    }))
-    const s = getSettings()
-    expect(s.stripTemplates).toEqual({ L: 'data:image/png;base64,OLD' })
-    expect(s.stripTemplate).toBeUndefined()
+  it('Postcard (100×148 mm) → meer foto\'s dan L', () => {
+    expect(passportCount('postcard')).toBeGreaterThan(passportCount('L'))
   })
 
-  it('bewaart aparte templates per papierformaat', () => {
-    saveSettings({ stripTemplates: { L: 'data:L', postcard: 'data:PC' } })
-    const s = getSettings()
-    expect(s.stripTemplates.L).toBe('data:L')
-    expect(s.stripTemplates.postcard).toBe('data:PC')
+  it('Card (54×86 mm) → past maar één pasfoto', () => {
+    expect(passportCount('card')).toBe(1)
+  })
+
+  it('max 2 kolommen, ongeacht velbreedte', () => {
+    expect(passportGrid('postcard').cols).toBeLessThanOrEqual(2)
+  })
+
+  it('onbekend formaat valt terug op default (L) → 4', () => {
+    expect(passportCount(undefined)).toBe(4)
   })
 })
