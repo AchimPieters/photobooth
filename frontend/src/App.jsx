@@ -36,7 +36,7 @@ import { buildPassportStrip }     from './utils/passportStrip'
 import { getLicenseInfo }         from './utils/license'
 import { getSettings, saveSettings } from './utils/settings'
 import { LangContext }            from './context/LangContext'
-import config, { paperForProduct } from './utils/config'
+import config, { paperForProduct, getActiveTemplate } from './utils/config'
 import { applyPrintPaper } from './utils/papers'
 
 function readPaymentResult() {
@@ -196,7 +196,10 @@ export default function App() {
   }, [])
 
   const onPassportPay = useCallback(async () => {
-    const stripDataUrl = await buildPassportStrip(sessionRef.current?.photo, { paper: paperForProduct('passport') })
+    const stripDataUrl = await buildPassportStrip(sessionRef.current?.photo, {
+      paper: paperForProduct('passport'),
+      count: getActiveTemplate('passport').photoCount,
+    })
     setSession(s => ({ ...s, stripDataUrl }))
     setScreen('payment')
   }, [])

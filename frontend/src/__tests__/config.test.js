@@ -22,64 +22,83 @@
  **/
 
 import { describe, it, expect, afterEach } from 'vitest'
-import config, { getConfig, stripOverlayForPaper, stripTemplateStatus } from '../utils/config'
-import { saveSettings } from '../utils/settings'
+import config, {
+  getConfig, getActiveTemplate, paperForProduct,
+  stripOverlayActive, stripTemplateStatus,
+} from '../utils/config'
+import { saveSettings, DEFAULT_STRIP_TEMPLATE, DEFAULT_PASSPORT_TEMPLATE } from '../utils/settings'
 
 describe('AppConfig', () => {
+  afterEach(() => localStorage.clear())
+
   it('prijs is groter dan 0',        () => expect(config.price).toBeGreaterThan(0))
   it('currency is EUR',              () => expect(config.currency).toBe('EUR'))
-  it('totalPhotos is 4 (default L)', () => expect(config.totalPhotos).toBe(4))
   it('countdownSecs is positief',    () => expect(config.countdownSecs).toBeGreaterThan(0))
   it('autoRestartSecs is positief',  () => expect(config.autoRestartSecs).toBeGreaterThan(0))
-  it('stripFooter is niet leeg',     () => expect(config.stripFooter.length).toBeGreaterThan(0))
   it('baseUrl begint met https',     () => expect(config.baseUrl).toMatch(/^https/))
 
-  it('totalPhotos volgt het papierformaat van de strip-printer', () => {
-    saveSettings({
-      printers: [{ id: 'p1', name: 'SELPHY', paper: 'card' }],
-      stripPrinterId: 'p1',
-    })
-    expect(getConfig().totalPhotos).toBe(3) // card → 3
-
-    saveSettings({
-      printers: [{ id: 'p1', name: 'SELPHY', paper: 'postcard' }],
-      stripPrinterId: 'p1',
-    })
-    expect(getConfig().totalPhotos).toBe(5) // postcard → 5
+  it('default: totalPhotos = aantal van de actieve strip-template (4)', () => {
+    expect(getConfig().totalPhotos).toBe(DEFAULT_STRIP_TEMPLATE.photoCount)
+    expect(getConfig().totalPhotos).toBe(4)
   })
 
-  afterEach(() => localStorage.clear())
+  it('papier komt uit de actieve template per product', () => {
+    expect(paperForProduct('strip')).toBe(DEFAULT_STRIP_TEMPLATE.paper)       // L
+    expect(paperForProduct('passport')).toBe(DEFAULT_PASSPORT_TEMPLATE.paper) // postcard
+  })
+
+  it('actieve template wisselen verandert totalPhotos + papier', () => {
+    saveSettings({
+      templates: [
+        { id: 's1', name: 'A', product: 'strip', paper: 'card', photoCount: 3, footer: '', bg: '#000', overlay: null, overlayOpacity: 1, designedFor: null },
+        { id: 'p1', name: 'P', product: 'passport', paper: 'postcard', photoCount: 6 },
+      ],
+      activeStripTemplateId: 's1',
+      activePassportTemplateId: 'p1',
+    })
+    expect(getConfig().totalPhotos).toBe(3)
+    expect(paperForProduct('strip')).toBe('card')
+    expect(getConfig().passportPhotoCount).toBe(6)
+  })
 })
 
-describe('template-waarborg (stripOverlayForPaper / stripTemplateStatus)', () => {
+describe('overlay-waarborg (stripOverlayActive / stripTemplateStatus)', () => {
   afterEach(() => localStorage.clear())
 
-  const base = {
-    printers: [{ id: 'p1', name: 'SELPHY', paper: 'L' }],
-    stripPrinterId: 'p1',
-    stripFooter: 'Event 2026', // footer aan
-    stripTemplates: { L: 'data:image/png;base64,AAAA' },
-  }
+  const withOverlay = (designedFor, footer = 'Event 2026') => ({
+    templates: [
+      { id: 's1', name: 'A', product: 'strip', paper: 'L', photoCount: 4, footer, bg: '#000',
+        overlay: 'data:image/png;base64,AAAA', overlayOpacity: 1, designedFor },
+      { id: 'p1', name: 'P', product: 'passport', paper: 'postcard', photoCount: 6 },
+    ],
+    activeStripTemplateId: 's1', activePassportTemplateId: 'p1',
+  })
 
-  it('past de overlay toe als meta matcht', () => {
-    saveSettings({ ...base, stripTemplateMeta: { L: { photoCount: 4, hasFooter: true } } })
-    expect(stripTemplateStatus('L').matches).toBe(true)
-    expect(stripOverlayForPaper('L')).toMatch(/^data:/)
+  it('past de overlay toe als designedFor matcht', () => {
+    saveSettings(withOverlay({ photoCount: 4, hasFooter: true }))
+    expect(stripTemplateStatus().matches).toBe(true)
+    expect(stripOverlayActive()).toMatch(/^data:/)
   })
 
   it('laat de overlay weg als de footer-status afwijkt', () => {
-    saveSettings({ ...base, stripTemplateMeta: { L: { photoCount: 4, hasFooter: false } } })
-    expect(stripTemplateStatus('L').matches).toBe(false)
-    expect(stripOverlayForPaper('L')).toBeNull()
+    saveSettings(withOverlay({ photoCount: 4, hasFooter: false }))
+    expect(stripTemplateStatus().matches).toBe(false)
+    expect(stripOverlayActive()).toBeNull()
   })
 
-  it('onbekende meta = passend (backwards compatible)', () => {
-    saveSettings({ ...base, stripTemplateMeta: {} })
-    expect(stripOverlayForPaper('L')).toMatch(/^data:/)
+  it('onbekende designedFor = passend (backwards compatible)', () => {
+    saveSettings(withOverlay(null))
+    expect(stripOverlayActive()).toMatch(/^data:/)
   })
 
-  it('geen template → geen overlay', () => {
-    saveSettings({ printers: base.printers, stripPrinterId: 'p1', stripTemplates: {} })
-    expect(stripOverlayForPaper('L')).toBeNull()
+  it('geen overlay → null', () => {
+    saveSettings({
+      templates: [
+        { id: 's1', name: 'A', product: 'strip', paper: 'L', photoCount: 4, footer: '', bg: '#000', overlay: null, overlayOpacity: 1, designedFor: null },
+        { id: 'p1', name: 'P', product: 'passport', paper: 'postcard', photoCount: 6 },
+      ],
+      activeStripTemplateId: 's1', activePassportTemplateId: 'p1',
+    })
+    expect(stripOverlayActive()).toBeNull()
   })
 })

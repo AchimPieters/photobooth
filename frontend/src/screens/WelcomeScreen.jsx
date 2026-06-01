@@ -22,8 +22,7 @@
  **/
 
 import React, { useEffect, useRef, useState } from 'react'
-import config, { paperForProduct } from '../utils/config'
-import { passportCount } from '../utils/passportStrip'
+import config from '../utils/config'
 import { t } from '../utils/i18n'
 
 const BASE = import.meta.env.BASE_URL
@@ -32,7 +31,7 @@ export default function WelcomeScreen({ onStartStrip, onStartPassport, onAdmin, 
   const [pulse, setPulse] = useState(false)
   const tapCount = useRef(0)
   const tapTimer = useRef(null)
-  const passportN = passportCount(paperForProduct('passport'))
+  const passportN = config.passportPhotoCount
 
   useEffect(() => {
     const id = setInterval(() => setPulse(p => !p), 1800)
