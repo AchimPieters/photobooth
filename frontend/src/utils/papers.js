@@ -68,11 +68,6 @@ export function paperPx(id) {
   return { w: mmToPx(p.wmm), h: mmToPx(p.hmm), wmm: p.wmm, hmm: p.hmm, id: p.id }
 }
 
-// Standaard-printerlijst (één SELPHY op L-formaat).
-export function defaultPrinters() {
-  return [{ id: 'p1', name: 'SELPHY CP1500 (1)', paper: DEFAULT_PAPER }]
-}
-
 // Werkt de @page-grootte voor de print bij naar het gekozen papierformaat.
 // iOS AirPrint respecteert de @page size deels; de operator kiest in de
 // printdialoog alsnog printer + formaat. Borderless = margin 0.

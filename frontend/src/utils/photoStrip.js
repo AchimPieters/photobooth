@@ -41,8 +41,8 @@
 import { paperPx, PRINT_DPI as PAPER_DPI } from './papers'
 
 // 300 dpi. Het vel-formaat is nu instelbaar per printer (zie papers.js);
-// de constanten hieronder houden de oude 4×6"-default voor bestaande imports
-// (passportStrip importeert SHEET_W/SHEET_H, tests gebruiken STRIP_W).
+// de constanten hieronder houden de oude 4×6"-default aan en dienen als
+// fallback-afmetingen voor buildStrip() wanneer geen width/height is opgegeven.
 export const PRINT_DPI = PAPER_DPI
 export const SHEET_W = 1200
 export const SHEET_H = 1800

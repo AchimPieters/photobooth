@@ -101,7 +101,6 @@ export default function App() {
   const lastActivityRef = useRef(Date.now())
   const [showAdmin,  setShowAdmin] = useState(false)
   const [licensed,   setLicensed]  = useState(false)
-  const [licenseInfo, setLicInfo]  = useState(null)
   const [lang, setLang] = useState(() => getSettings().language || 'nl')
 
   const changeLang = useCallback((l) => {
@@ -112,7 +111,6 @@ export default function App() {
   const refreshLicense = useCallback(() => {
     getLicenseInfo().then(info => {
       setLicensed(info?.valid ?? false)
-      setLicInfo(info)
     })
   }, [])
 
@@ -231,7 +229,6 @@ export default function App() {
           onStartPassport={startPassport}
           onAdmin={() => setShowAdmin(true)}
           licensed={licensed}
-          licenseInfo={licenseInfo}
           lang={lang}
           onChangeLang={changeLang}
         />
