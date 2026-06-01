@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { PAPERS, DEFAULT_PAPER, getPaper, paperPx, mmToPx, paperLabel } from '../utils/papers'
+import { PAPERS, DEFAULT_PAPER, getPaper, paperPx, mmToPx, paperLabel, stripPhotoCount } from '../utils/papers'
 
 describe('papers', () => {
   it('standaard is L-formaat 89×119 mm', () => {
@@ -38,5 +38,16 @@ describe('papers', () => {
   it('label is tweetalig', () => {
     expect(paperLabel('L', 'nl')).toMatch(/L-formaat/)
     expect(paperLabel('L', 'en')).toMatch(/L size/)
+  })
+
+  it('strip-fotoaantal ligt vast per papierformaat', () => {
+    expect(stripPhotoCount('L')).toBe(4)
+    expect(stripPhotoCount('postcard')).toBe(5)
+    expect(stripPhotoCount('card')).toBe(3)
+  })
+
+  it('onbekend formaat valt terug op default-aantal (L → 4)', () => {
+    expect(stripPhotoCount('nope')).toBe(4)
+    expect(stripPhotoCount(undefined)).toBe(4)
   })
 })

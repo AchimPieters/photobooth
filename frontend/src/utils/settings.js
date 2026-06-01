@@ -5,7 +5,9 @@ const DEFAULTS = {
   passportPrice:     Number(import.meta.env.VITE_PASSPORT_PRICE ?? 10.00),
   currency:          'EUR',
   sumupAffiliateKey: '',
-  totalPhotos:       4,
+  // Aantal strip-foto's is GEEN instelling meer: het ligt vast per
+  // papierformaat (zie PAPERS[...].strip in papers.js) en wordt afgeleid in
+  // config.getConfig(). Zo blijft het altijd consistent met de event-template.
   countdownSecs:     3,
   autoRestartSecs:   15,
   stripFooter:       'Photobooth ✦ 2026',

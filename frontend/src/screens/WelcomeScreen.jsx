@@ -62,7 +62,7 @@ export default function WelcomeScreen({ onStartStrip, onStartPassport, onAdmin, 
         <button style={s.modeCard} onClick={onStartStrip}>
           <span style={s.modeIcon}>📸</span>
           <span style={s.modeTitle}>{t('strip.title', lang)}</span>
-          <span style={s.modeSub}>{t('strip.sub', lang)}</span>
+          <span style={s.modeSub}>{t('strip.sub', lang, { n: config.totalPhotos })}</span>
           <span style={s.modePrice}>€{config.price.toFixed(2)}</span>
         </button>
 

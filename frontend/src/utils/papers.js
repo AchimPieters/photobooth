@@ -12,10 +12,14 @@ export const PRINT_DPI = 300
 export const mmToPx = (mm) => Math.round((mm / 25.4) * PRINT_DPI)
 
 // id → definitie. wmm/hmm = printgebied in mm (portret).
+// strip = vast aantal foto's per fotostrip op dit vel. Net als bij pasfoto's
+// (waar het aantal uit de velmaat volgt) ligt het strip-aantal vast per
+// papierformaat: zo kan het nooit losraken van de per-formaat opgeslagen
+// event-template. Wil je een ander aantal? Pas het hier aan — één bron.
 export const PAPERS = {
-  postcard: { id: 'postcard', wmm: 100, hmm: 148, nl: 'Postcard 10×15 cm (4×6")', en: 'Postcard 4×6" (10×15 cm)' },
-  L:        { id: 'L',        wmm: 89,  hmm: 119, nl: 'L-formaat 89×119 mm',       en: 'L size 89×119 mm' },
-  card:     { id: 'card',     wmm: 54,  hmm: 86,  nl: 'Card 54×86 mm',             en: 'Card 54×86 mm' },
+  postcard: { id: 'postcard', wmm: 100, hmm: 148, strip: 5, nl: 'Postcard 10×15 cm (4×6")', en: 'Postcard 4×6" (10×15 cm)' },
+  L:        { id: 'L',        wmm: 89,  hmm: 119, strip: 4, nl: 'L-formaat 89×119 mm',       en: 'L size 89×119 mm' },
+  card:     { id: 'card',     wmm: 54,  hmm: 86,  strip: 3, nl: 'Card 54×86 mm',             en: 'Card 54×86 mm' },
 }
 
 // Standaard zoals gevraagd: L-formaat (89×119 mm).
@@ -23,6 +27,11 @@ export const DEFAULT_PAPER = 'L'
 
 export function getPaper(id) {
   return PAPERS[id] || PAPERS[DEFAULT_PAPER]
+}
+
+// Vast aantal fotostrip-foto's voor dit papierformaat (1–8).
+export function stripPhotoCount(id) {
+  return Math.max(1, Math.min(8, getPaper(id).strip || 4))
 }
 
 export function paperLabel(id, lang = 'nl') {

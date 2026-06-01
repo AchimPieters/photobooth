@@ -212,6 +212,10 @@ export function buildTemplateGuide(options = {}) {
   const w = Math.round(sheetPx.w / 2) // één strip = halve velbreedte
   const h = sheetPx.h
   const photoCount = Math.max(1, Math.min(8, options.photoCount || 4))
+  // Volg de werkelijke footer-status van de strip: anders reserveert de gids
+  // een footer-zone die de echte print niet heeft (of omgekeerd) → template
+  // past niet meer. Default true voor terugwaartse compatibiliteit.
+  const hasFooter = options.hasFooter !== false
 
   const canvas = document.createElement('canvas')
   canvas.width = w
@@ -222,7 +226,7 @@ export function buildTemplateGuide(options = {}) {
   // transparantie ziet.
   drawChecker(ctx, w, h)
 
-  const layout = stripLayout(w, h, photoCount, true)
+  const layout = stripLayout(w, h, photoCount, hasFooter)
 
   // Max-kader / bleed (volledige canvas).
   ctx.strokeStyle = '#e0245e'

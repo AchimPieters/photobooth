@@ -2,7 +2,7 @@ const T = {
   nl: {
     // WelcomeScreen
     'strip.title':       'Fotostrip',
-    'strip.sub':         "4 foto's · direct printen",
+    'strip.sub':         "{n} foto's · direct printen",
     'passport.title':    "Pasfoto's",
     'passport.sub':      'Officieel formaat 35×45 mm',
     'demo.badge':        'DEMO — betalen & printen uitgeschakeld',
@@ -105,7 +105,7 @@ const T = {
     'adm.pay.currency':   'Valuta',
     'adm.pay.url':        'Callback basis-URL',
     'adm.booth.section':  '📷 Fotobooth',
-    'adm.booth.photos':   "Aantal foto's (1–8)",
+    'adm.booth.photos_info': "🎞️ {n} foto's per strip op {paper} — vast per papierformaat, zodat de strip altijd bij de event-template past.",
     'adm.booth.countdown':'Aftelling (1–10 sec)',
     'adm.booth.restart':  'Auto-herstart na betaling (5–120 sec)',
     'adm.booth.idle':     'Reset bij inactiviteit (10–300 sec)',
@@ -127,7 +127,7 @@ const T = {
   en: {
     // WelcomeScreen
     'strip.title':       'Photo Strip',
-    'strip.sub':         '4 photos · instant print',
+    'strip.sub':         '{n} photos · instant print',
     'passport.title':    'Passport Photos',
     'passport.sub':      'Official format 35×45 mm',
     'demo.badge':        'DEMO — payment & printing disabled',
@@ -230,7 +230,7 @@ const T = {
     'adm.pay.currency':   'Currency',
     'adm.pay.url':        'Callback base URL',
     'adm.booth.section':  '📷 Photo Booth',
-    'adm.booth.photos':   'Number of photos (1–8)',
+    'adm.booth.photos_info': '🎞️ {n} photos per strip on {paper} — fixed per paper size, so the strip always matches the event template.',
     'adm.booth.countdown':'Countdown (1–10 sec)',
     'adm.booth.restart':  'Auto-restart after payment (5–120 sec)',
     'adm.booth.idle':     'Reset on inactivity (10–300 sec)',

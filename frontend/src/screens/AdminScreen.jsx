@@ -6,7 +6,7 @@ import { formatDate, t } from '../utils/i18n'
 import { useLang } from '../context/LangContext'
 import { buildTemplateGuide } from '../utils/photoStrip'
 import { passportCount } from '../utils/passportStrip'
-import { PAPERS, DEFAULT_PAPER, paperLabel } from '../utils/papers'
+import { PAPERS, DEFAULT_PAPER, paperLabel, stripPhotoCount } from '../utils/papers'
 
 // Tweetalige teksten voor de printers-sectie.
 const PRN = {
@@ -223,7 +223,6 @@ export default function AdminScreen({ onClose }) {
       passportPrice:     String(c.passportPrice),
       currency:          c.currency,
       baseUrl:           c.baseUrl,
-      totalPhotos:       String(c.totalPhotos),
       countdownSecs:     String(c.countdownSecs),
       autoRestartSecs:    String(c.autoRestartSecs),
       inactivityResetSecs: String(c.inactivityResetSecs),
@@ -255,6 +254,9 @@ export default function AdminScreen({ onClose }) {
   // Aantal pasfoto's dat op het pasfoto-vel past (voor de prijslabel).
   const passportPaper = (form.printers.find(pr => pr.id === form.passportPrinterId) || form.printers[0])?.paper || DEFAULT_PAPER
   const passportN = passportCount(passportPaper)
+
+  // Vast aantal strip-foto's voor het strip-papier (afgeleid, niet instelbaar).
+  const stripN = stripPhotoCount(stripPaper)
 
   // Welk papierformaat wordt nu bewerkt in de template-sectie. Standaard het
   // formaat dat de fotostrip gebruikt. Elk formaat heeft een eigen template.
@@ -289,7 +291,8 @@ export default function AdminScreen({ onClose }) {
   const downloadGuide = () => {
     const url = buildTemplateGuide({
       paper: tplPaper,
-      photoCount: Math.max(1, Math.min(8, parseInt(form.totalPhotos) || 4)),
+      photoCount: stripPhotoCount(tplPaper),
+      hasFooter: !!form.stripFooter.trim(),
     })
     const a = document.createElement('a')
     a.href = url
@@ -336,7 +339,6 @@ export default function AdminScreen({ onClose }) {
       passportPrice:     Number(form.passportPrice) || 0,
       currency:          form.currency.trim().toUpperCase() || 'EUR',
       baseUrl:           form.baseUrl.trim(),
-      totalPhotos:       Math.max(1, Math.min(8,   parseInt(form.totalPhotos)    || 4)),
       countdownSecs:     Math.max(1, Math.min(10,  parseInt(form.countdownSecs)  || 3)),
       autoRestartSecs:    Math.max(5,  Math.min(120, parseInt(form.autoRestartSecs)    || 15)),
       inactivityResetSecs: Math.max(10, Math.min(300, parseInt(form.inactivityResetSecs) || 30)),
@@ -405,10 +407,7 @@ export default function AdminScreen({ onClose }) {
 
         {/* ── Fotobooth ── */}
         <Section title={t('adm.booth.section', lang)}>
-          <Field label={t('adm.booth.photos', lang)}>
-            <input style={s.input} type="number" min="1" max="8"
-              value={form.totalPhotos} onChange={e => set('totalPhotos', e.target.value)} />
-          </Field>
+          <p style={s.tplHelp}>{t('adm.booth.photos_info', lang, { n: stripN, paper: paperLabel(stripPaper, lang) })}</p>
           <Field label={t('adm.booth.countdown', lang)}>
             <input style={s.input} type="number" min="1" max="10"
               value={form.countdownSecs} onChange={e => set('countdownSecs', e.target.value)} />
@@ -509,6 +508,10 @@ export default function AdminScreen({ onClose }) {
                 </option>
               ))}
             </select>
+
+            <p style={{ ...s.hint, marginTop: 8 }}>
+              {t('adm.booth.photos_info', lang, { n: stripPhotoCount(tplPaper), paper: paperLabel(tplPaper, lang) })}
+            </p>
 
             <div style={{ height: 12 }} />
 
