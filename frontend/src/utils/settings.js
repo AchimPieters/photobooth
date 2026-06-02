@@ -21,72 +21,110 @@
    for more information visit https://www.studiopieters.nl
  **/
 
+import { stripPhotoCount } from './papers'
+import { passportCount } from './passportStrip'
+
 const KEY = 'pb_settings'
+
+// Eén "template" is de eenheid van configuratie: hij legt papier + aantal foto's
+// + (voor strips) footer/achtergrond/overlay vast. De operator kiest per product
+// één actieve template; papier en aantal komen daar volledig uit. Zo zijn er
+// minder losse keuzes en kan een overlay nooit losraken van zijn aantal/papier.
+//
+// Strip-template:    { id, name, product:'strip',    paper, photoCount, footer, bg,
+//                      overlay(dataUrl|null), overlayOpacity, designedFor }
+// Pasfoto-template:  { id, name, product:'passport', paper, photoCount }
+export const DEFAULT_STRIP_TEMPLATE = {
+  id: 'strip-default', name: 'Standaard strip', product: 'strip',
+  paper: 'L', photoCount: 4,
+  footer: 'Photobooth ✦ 2026', bg: '#000000',
+  overlay: null, overlayOpacity: 1, designedFor: null,
+}
+export const DEFAULT_PASSPORT_TEMPLATE = {
+  id: 'passport-default', name: 'Standaard pasfoto', product: 'passport',
+  paper: 'postcard', photoCount: 6,
+}
 
 const DEFAULTS = {
   price:             Number(import.meta.env.VITE_PRICE ?? 3.00),
   passportPrice:     Number(import.meta.env.VITE_PASSPORT_PRICE ?? 10.00),
   currency:          'EUR',
   sumupAffiliateKey: '',
-  // Aantal strip-foto's is GEEN instelling meer: het ligt vast per
-  // papierformaat (zie PAPERS[...].strip in papers.js) en wordt afgeleid in
-  // config.getConfig(). Zo blijft het altijd consistent met de event-template.
   countdownSecs:     3,
   autoRestartSecs:   15,
-  stripFooter:       'Photobooth ✦ 2026',
-  stripBg:           '#000000',
-  // Event-templates: PNG met transparantie (data-URL) per papierformaat, als
-  // overlay over de fotostrip geprint. Map papier-id → data-URL, bijv.
-  // { L: 'data:...', postcard: 'data:...' }. Leeg = geen template.
-  stripTemplates:       {},
-  // Dekking per papierformaat (map papier-id → 0..1), net als stripTemplates.
-  stripTemplateOpacities: {},
-  // Ontwerp-parameters per template (map papier-id → { photoCount, hasFooter }):
-  // waarvoor de template is gemaakt. Hiermee waarschuwt de admin bij afwijkende
-  // instellingen en laat de print de overlay weg als die niet meer past.
-  stripTemplateMeta: {},
   baseUrl:            '',
   passwordHash:       '',
   language:           'nl',
   inactivityResetSecs: 30,
-  // Printers: lijst van SELPHY CP1500's, elk met een eigen papierformaat.
-  // Per product (fotostrip / pasfoto's) wijs je een printer toe; de app
-  // rendert dan op het juiste formaat. Welke fysieke printer de taak krijgt
-  // kiest de operator in de iOS AirPrint-dialoog (browser kan dat niet sturen).
-  printers: [{ id: 'p1', name: 'SELPHY CP1500 (1)', paper: 'L' }],
-  stripPrinterId:    'p1',
-  passportPrinterId: 'p1',
+  // Alle papier-/aantal-/overlay-instellingen zitten nu in templates.
+  templates: [ { ...DEFAULT_STRIP_TEMPLATE }, { ...DEFAULT_PASSPORT_TEMPLATE } ],
+  activeStripTemplateId:    DEFAULT_STRIP_TEMPLATE.id,
+  activePassportTemplateId: DEFAULT_PASSPORT_TEMPLATE.id,
+}
+
+// Zet de oude (printers + per-papier templates) structuur om naar het nieuwe
+// template-model, zodat bestaande installaties hun instellingen behouden.
+function migrate(merged) {
+  const printers = Array.isArray(merged.printers) ? merged.printers : []
+  const stripPrinter = printers.find(p => p.id === merged.stripPrinterId) || printers[0]
+  const passPrinter  = printers.find(p => p.id === merged.passportPrinterId) || printers[0]
+  const stripPaper = stripPrinter?.paper || 'L'
+  const passPaper  = passPrinter?.paper || 'postcard'
+
+  // Oude losse stripTemplate → per-papier map (tussenstap), dan overlay pakken.
+  const tplMap = (merged.stripTemplates && typeof merged.stripTemplates === 'object') ? merged.stripTemplates : {}
+  if (merged.stripTemplate && !tplMap[stripPaper]) tplMap[stripPaper] = merged.stripTemplate
+  const opacMap = (merged.stripTemplateOpacities && typeof merged.stripTemplateOpacities === 'object') ? merged.stripTemplateOpacities : {}
+  const metaMap = (merged.stripTemplateMeta && typeof merged.stripTemplateMeta === 'object') ? merged.stripTemplateMeta : {}
+
+  merged.templates = [
+    {
+      ...DEFAULT_STRIP_TEMPLATE,
+      paper: stripPaper,
+      photoCount: stripPhotoCount(stripPaper),
+      footer: typeof merged.stripFooter === 'string' ? merged.stripFooter : DEFAULT_STRIP_TEMPLATE.footer,
+      bg: merged.stripBg || DEFAULT_STRIP_TEMPLATE.bg,
+      overlay: tplMap[stripPaper] || null,
+      overlayOpacity: typeof opacMap[stripPaper] === 'number' ? opacMap[stripPaper] : 1,
+      designedFor: metaMap[stripPaper] || null,
+    },
+    {
+      ...DEFAULT_PASSPORT_TEMPLATE,
+      paper: passPaper,
+      photoCount: passportCount(passPaper),
+    },
+  ]
+  merged.activeStripTemplateId = DEFAULT_STRIP_TEMPLATE.id
+  merged.activePassportTemplateId = DEFAULT_PASSPORT_TEMPLATE.id
+  return merged
 }
 
 export function getSettings() {
   try {
     const raw = localStorage.getItem(KEY)
     if (raw) {
-      const merged = { ...DEFAULTS, ...JSON.parse(raw) }
-      // Migratie: oude losse stripTemplate → map onder het strip-papierformaat.
-      if (merged.stripTemplate && (!merged.stripTemplates || Object.keys(merged.stripTemplates).length === 0)) {
-        const printer = (merged.printers || []).find(p => p.id === merged.stripPrinterId) || (merged.printers || [])[0]
-        const paper = printer?.paper || 'L'
-        merged.stripTemplates = { [paper]: merged.stripTemplate }
+      const parsed = JSON.parse(raw)
+      let merged = { ...DEFAULTS, ...parsed }
+      // Alleen migreren als de opgeslagen data nog géén templates-array had.
+      if (!Array.isArray(parsed.templates)) merged = migrate(merged)
+      // Verouderde sleutels opruimen.
+      for (const k of ['printers', 'stripPrinterId', 'passportPrinterId', 'stripTemplate',
+                       'stripTemplates', 'stripTemplateOpacity', 'stripTemplateOpacities',
+                       'stripTemplateMeta', 'stripFooter', 'stripBg', 'totalPhotos']) {
+        delete merged[k]
       }
-      delete merged.stripTemplate
-      if (!merged.stripTemplates || typeof merged.stripTemplates !== 'object') merged.stripTemplates = {}
-      // Migratie: oude globale dekking → per-papier map voor elk papier dat een
-      // template heeft.
-      if (!merged.stripTemplateOpacities || typeof merged.stripTemplateOpacities !== 'object') merged.stripTemplateOpacities = {}
-      if (typeof merged.stripTemplateOpacity === 'number') {
-        for (const paper of Object.keys(merged.stripTemplates)) {
-          if (merged.stripTemplateOpacities[paper] === undefined) {
-            merged.stripTemplateOpacities[paper] = merged.stripTemplateOpacity
-          }
-        }
+      // Borg een geldige array + geldige actieve-ids.
+      if (!Array.isArray(merged.templates) || merged.templates.length === 0) {
+        merged.templates = [ { ...DEFAULT_STRIP_TEMPLATE }, { ...DEFAULT_PASSPORT_TEMPLATE } ]
       }
-      delete merged.stripTemplateOpacity
-      if (!merged.stripTemplateMeta || typeof merged.stripTemplateMeta !== 'object') merged.stripTemplateMeta = {}
+      const strips = merged.templates.filter(t => t.product === 'strip')
+      const passes = merged.templates.filter(t => t.product === 'passport')
+      if (!strips.some(t => t.id === merged.activeStripTemplateId)) merged.activeStripTemplateId = strips[0]?.id
+      if (!passes.some(t => t.id === merged.activePassportTemplateId)) merged.activePassportTemplateId = passes[0]?.id
       return merged
     }
   } catch {}
-  return { ...DEFAULTS }
+  return JSON.parse(JSON.stringify(DEFAULTS))
 }
 
 // Geeft true bij succes, false als opslaan mislukt (bijv. quota vol door te

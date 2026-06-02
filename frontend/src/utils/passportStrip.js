@@ -54,7 +54,11 @@ export async function buildPassportStrip(photoDataUrl, options = {}) {
   const sheetW = sheet.w
   const sheetH = sheet.h
 
-  const { cols, rows, count } = passportGrid(options.paper)
+  // Aantal komt uit de template (options.count), geklemd op wat fysiek past.
+  const grid = passportGrid(options.paper)
+  const cols = grid.cols
+  const count = Math.max(1, Math.min(grid.count, options.count || grid.count))
+  const rows = Math.ceil(count / cols)
 
   return new Promise((resolve) => {
     const img = new Image()

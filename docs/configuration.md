@@ -59,19 +59,10 @@ stripFooter: 'Jouw Evenement ✦ 2026',
 ```
 
 ### Aantal foto's per strip
-Dit is **geen vrije instelling** meer: het aantal ligt vast per papierformaat,
-zodat het altijd matcht met de per-formaat opgeslagen event-template (net als
-bij pasfoto's). Pas het aan in `frontend/src/utils/papers.js` via het
-`strip`-veld per formaat:
-```js
-export const PAPERS = {
-  postcard: { …, strip: 5 },  // 5 foto's per strip
-  L:        { …, strip: 4 },  // 4 foto's per strip
-  card:     { …, strip: 3 },  // 3 foto's per strip
-}
-```
-In de admin zie je per gekozen strip-printer/papierformaat hoeveel foto's de
-strip krijgt.
+Het aantal zit nu **in de template** (zie hieronder), niet meer als losse
+instelling. Het `strip`-veld in `frontend/src/utils/papers.js` bepaalt alleen
+nog het *voorgestelde* aantal bij het aanmaken van een nieuwe strip-template
+(L→4, Postcard→5, Card→3).
 
 ### Aftelling
 ```js
@@ -85,55 +76,42 @@ autoRestartSecs: 15,  // Seconden na betaling voor auto-reset
 
 ---
 
-## Printers, papierformaten & event-templates
+## Templates (de eenheid van configuratie)
 
-De app print op de **Canon SELPHY CP1500** (één mediaformaat per printer tegelijk).
-In het admin-paneel (5× tikken op het icoon) koppel je één of meer printers, elk
-met een eigen papierformaat, en wijs je per product een printer toe:
+Alles draait om **templates**. Eén template legt vast: **product** (fotostrip of
+pasfoto), **papierformaat**, **aantal foto's**, en voor strips ook **footer**,
+**achtergrond** en de **overlay-PNG**. Je kiest in het admin-paneel (5× tikken op
+het icoon) per product de **actieve** template; de klant tikt gewoon
+*Fotostrip* of *Pasfoto's* en krijgt die template.
 
-- **Fotostrip** → printer A
-- **Pasfoto's** → printer B
+Daarmee zijn er geen losse, los van elkaar in te stellen knoppen meer voor
+papier en aantal — en kan een overlay nooit losraken van zijn aantal/papier.
 
-Elk product staat volledig los van het andere. Beide mogen dezelfde printer
-(en hetzelfde papier) gebruiken; dat is de standaard.
+> De fysieke printer kies je in de **iOS AirPrint-dialoog** (de browser kan dat
+> niet sturen). Zorg dat de printer met het juiste papier geladen is; het
+> papierformaat in de app komt uit de gekozen template (`@page`-grootte).
 
-### Papierformaten
-Gedefinieerd in `frontend/src/utils/papers.js` (`PAPERS`): printgebied in mm +
-het vaste aantal strip-foto's (`strip`). Standaard: L (89×119 mm, 4 foto's),
-Postcard (100×148 mm, 5), Card (54×86 mm, 3).
+### Een template instellen
+1. **Templates**-sectie → *Nieuwe strip-template* of *Nieuwe pasfoto-template*.
+2. Geef **naam**, **papierformaat** en **aantal foto's**.
+   - Strip: aantal vrij (1–8), met een voorstel per papier.
+   - Pasfoto: aantal geklemd op wat fysiek past (Card→1, L→4, Postcard→6).
+3. Strip: zet **footer** + **achtergrond**; download de **ontwerpgids** (exacte
+   maat + aantal vakken), ontwerp je overlay en upload de transparante PNG.
+4. De **live preview** toont de strip met voorbeeldfoto's + overlay zoals geprint.
+5. Kies bovenaan de **actieve** strip- en pasfoto-template.
 
 ### Pasfoto's — maat ligt fysiek vast
 Een pasfoto is **altijd 35×45 mm**, ongeacht het papierformaat. Het papier
-bepaalt alleen hoeveel pasfoto's er op het vel passen (Card→1, L→4, Postcard→6).
-Pasfoto's gebruiken **geen** template, dus de officiële voorschriften kunnen niet
-verstoord worden door een papier- of templatewijziging.
+bepaalt alleen hoeveel er op het vel passen. Pasfoto's gebruiken **geen** overlay,
+dus de officiële voorschriften kunnen niet verstoord worden.
 
-### Event-templates (alleen fotostrip)
-Een template is een **transparante PNG-overlay (300 dpi)** die over de strip
-wordt geprint, **per papierformaat** opgeslagen. Werkwijze in de admin:
-
-1. Kies het papierformaat in de template-sectie.
-2. Download de **ontwerpgids** — die opent op exact de juiste maat, met het juiste
-   aantal fotovakken en (alleen) een footer-zone als je een footer hebt ingesteld.
-3. Ontwerp je overlay op die gids en upload de PNG.
-4. De **live preview** toont de strip met voorbeeldfoto's + jouw overlay, precies
-   zoals geprint wordt. De dekking stel je per papierformaat in.
-
-### Waarborg: template past altijd bij de instellingen
-Bij het uploaden legt de app vast **waarvoor** de template is gemaakt
-(aantal foto's + wel/geen footer). Daarna geldt:
-
-- **Admin** toont groen *"past bij de huidige instellingen"* of rood met wat
-  afwijkt (bijv. footer aan/uit gewijzigd), met een knop *"Toch toepassen —
-  markeer als passend"* als je zeker weet dat het klopt.
-- Gebruikt de strip-printer een papierformaat **zonder** template, dan meldt de
-  admin dat de strip zonder overlay print.
+### Waarborg: overlay past altijd
+Bij het uploaden legt de app vast waarvoor de overlay is gemaakt (aantal +
+wel/geen footer). Daarna:
+- **Admin** toont groen *"past"* of rood met wat afwijkt, met *"Toch toepassen —
+  markeer als passend"* voor als je het zeker weet.
 - **Bij het printen** wordt de overlay **weggelaten** als hij niet (meer) past →
   liever een schone strip dan een scheve print.
-- Templates van vóór deze functie hebben geen vastgelegde parameters en gelden
-  als "passend" (ze verliezen hun overlay dus niet automatisch).
-
-Omdat het aantal strip-foto's vastligt per papierformaat én de template per
-papierformaat wordt bewaard, lopen aantal en template nooit uit elkaar; de enige
-variabele die nog kan afwijken (footer aan/uit) wordt door bovenstaande waarborg
-afgevangen.
+- Overlays van vóór deze functie gelden als "passend" (verliezen hun overlay niet
+  automatisch).

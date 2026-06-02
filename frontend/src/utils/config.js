@@ -21,83 +21,70 @@
    for more information visit https://www.studiopieters.nl
  **/
 
-import { getSettings } from './settings'
-import { stripPhotoCount } from './papers'
+import { getSettings, DEFAULT_STRIP_TEMPLATE, DEFAULT_PASSPORT_TEMPLATE } from './settings'
+
+// De actieve template voor een product ('strip' of 'passport'). Valt terug op
+// de eerste template van dat product, en uiteindelijk op de ingebouwde default.
+export function getActiveTemplate(product) {
+  const s = getSettings()
+  const id = product === 'passport' ? s.activePassportTemplateId : s.activeStripTemplateId
+  const list = (s.templates || []).filter(t => t.product === product)
+  return list.find(t => t.id === id) || list[0] ||
+    (product === 'passport' ? { ...DEFAULT_PASSPORT_TEMPLATE } : { ...DEFAULT_STRIP_TEMPLATE })
+}
 
 export function getConfig() {
   const s = getSettings()
-  const printers = Array.isArray(s.printers) && s.printers.length ? s.printers : [{ id: 'p1', name: 'SELPHY CP1500 (1)', paper: 'L' }]
-  const stripPrinterId = s.stripPrinterId || 'p1'
-  const stripPaper = (printers.find(p => p.id === stripPrinterId) || printers[0])?.paper || 'L'
+  const strip = getActiveTemplate('strip')
+  const pass  = getActiveTemplate('passport')
   return {
     price:             s.price,
     passportPrice:     s.passportPrice,
     currency:          s.currency,
     sumupAffiliateKey: s.sumupAffiliateKey || (import.meta.env.VITE_SUMUP_KEY ?? ''),
-    // Aantal strip-foto's ligt vast per papierformaat (niet instelbaar), zodat
-    // het altijd matcht met de per-formaat opgeslagen event-template.
-    totalPhotos:       stripPhotoCount(stripPaper),
     countdownSecs:     s.countdownSecs,
     autoRestartSecs:   s.autoRestartSecs,
     inactivityResetSecs: s.inactivityResetSecs,
-    stripFooter:       s.stripFooter,
-    stripBg:           s.stripBg,
-    stripTemplates:       s.stripTemplates || {},
-    stripTemplateOpacities: s.stripTemplateOpacities || {},
-    stripTemplateMeta:    s.stripTemplateMeta || {},
-    printers,
-    stripPrinterId,
-    passportPrinterId: s.passportPrinterId || 'p1',
     baseUrl:           s.baseUrl || (import.meta.env.VITE_BASE_URL ?? 'https://achimpieters.github.io/photobooth'),
+    // Afgeleid uit de actieve templates — de schermen blijven dezelfde velden lezen.
+    totalPhotos:       strip.photoCount,
+    stripFooter:       strip.footer || '',
+    stripBg:           strip.bg || '#000000',
+    passportPhotoCount: pass.photoCount,
+    // Voor de admin.
+    templates:                s.templates,
+    activeStripTemplateId:    s.activeStripTemplateId,
+    activePassportTemplateId: s.activePassportTemplateId,
   }
 }
 
-// Resolve't de paper-id voor een product ('strip' of 'passport') via de
-// toegewezen printer. Valt terug op de eerste printer / L-formaat.
+// Het papierformaat voor een product = papier van de actieve template.
 export function paperForProduct(kind) {
-  const c = getConfig()
-  const wantId = kind === 'passport' ? c.passportPrinterId : c.stripPrinterId
-  const printer = c.printers.find(p => p.id === wantId) || c.printers[0]
-  return printer?.paper || 'L'
+  return getActiveTemplate(kind).paper
 }
 
-// De event-template (data-URL of null) voor de fotostrip op het huidige
-// strip-papierformaat. Elk papierformaat heeft een eigen template.
-export function stripTemplateForPaper(paper) {
-  const c = getConfig()
-  return (c.stripTemplates && c.stripTemplates[paper]) || null
+// Past de overlay van de actieve strip-template nog bij zijn eigen aantal/footer?
+// designedFor legt vast waarvoor de overlay is gemaakt; onbekend = passend
+// (overlay van vóór deze waarborg verliest z'n overlay niet stilletjes).
+export function stripTemplateStatus() {
+  const t = getActiveTemplate('strip')
+  if (!t.overlay) return { hasTemplate: false, matches: false, meta: null, template: t }
+  const meta = t.designedFor
+  const curFooter = !!(t.footer && t.footer.trim())
+  if (!meta) return { hasTemplate: true, matches: true, meta: null, curFooter, curCount: t.photoCount, template: t }
+  const matches = meta.hasFooter === curFooter && meta.photoCount === t.photoCount
+  return { hasTemplate: true, matches, meta, curFooter, curCount: t.photoCount, template: t }
 }
 
-// De template-dekking (0..1) voor het gegeven papierformaat. Default 1.
-export function stripTemplateOpacityForPaper(paper) {
-  const c = getConfig()
-  const v = c.stripTemplateOpacities && c.stripTemplateOpacities[paper]
+// De overlay-data-URL voor de print, of null als er geen (passende) is.
+export function stripOverlayActive() {
+  const st = stripTemplateStatus()
+  return (st.hasTemplate && st.matches) ? st.template.overlay : null
+}
+
+export function stripOverlayOpacityActive() {
+  const v = getActiveTemplate('strip').overlayOpacity
   return typeof v === 'number' ? v : 1
-}
-
-// Bepaalt of een opgeslagen template nog past bij de huidige strip-instellingen.
-// Vergelijkt de bewaarde ontwerp-parameters (aantal foto's + footer) met de
-// actuele situatie. Onbekende meta (template van vóór deze functie) = passend,
-// zodat bestaande setups niet stilletjes hun overlay verliezen.
-export function stripTemplateStatus(paper) {
-  const c = getConfig()
-  const url = c.stripTemplates && c.stripTemplates[paper]
-  if (!url) return { hasTemplate: false, matches: false, meta: null }
-  const meta = c.stripTemplateMeta && c.stripTemplateMeta[paper]
-  const curFooter = !!(c.stripFooter && c.stripFooter.trim())
-  const curCount = stripPhotoCount(paper)
-  if (!meta) return { hasTemplate: true, matches: true, meta: null, curFooter, curCount }
-  const matches = meta.hasFooter === curFooter && meta.photoCount === curCount
-  return { hasTemplate: true, matches, meta, curFooter, curCount }
-}
-
-// De overlay-data-URL voor de print, of null als er geen (passende) template is.
-// Bij een mismatch wordt de overlay bewust weggelaten → liever een schone strip
-// dan een scheve print.
-export function stripOverlayForPaper(paper) {
-  const st = stripTemplateStatus(paper)
-  if (!st.hasTemplate || !st.matches) return null
-  return getConfig().stripTemplates[paper]
 }
 
 // Proxy zodat bestaande `config.price` etc. altijd vers uit localStorage leest
