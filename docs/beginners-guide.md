@@ -12,6 +12,8 @@ Nog nooit iets met GitHub gedaan? Geen probleem. Deze gids leidt je stap voor st
 - SumUp Air of Solo betaalterminal
 - Dat is alles — geen Mac, geen Xcode, geen installatie
 
+![Photobooth hardware — iPad, SumUp-kaartlezer en Canon SELPHY CP1500-printers](../Images/photobooth-hardware.png)
+
 ---
 
 ## Stap 1 — De app op je iPad zetten
