@@ -55,9 +55,10 @@ Na vervangen: herstart de printer en print opnieuw.
 - Probeer de betaling opnieuw
 
 ### App keert niet terug na betaling
-SumUp stuurt de gast terug via een URL. Dit werkt alleen als:
+SumUp stuurt de gast terug via een URL. De app leidt die URL **automatisch** af
+van waar hij draait, dus daar hoef je niets in te stellen. Dit werkt het best als:
 - De app als PWA geïnstalleerd is via "Zet op beginscherm"
-- De `VITE_BASE_URL` correct is ingesteld op `https://achimpieters.github.io/photobooth`
+- De iPad een werkende internetverbinding heeft
 
 ---
 

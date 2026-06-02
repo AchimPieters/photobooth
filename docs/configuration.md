@@ -45,8 +45,10 @@ Maak een bestand `frontend/.env.local` (staat in `.gitignore`, nooit in git):
 ```
 VITE_SUMUP_KEY=jouw_key_hier
 VITE_PRICE=3.00
-VITE_BASE_URL=http://localhost:5173/photobooth
 ```
+
+> De callback-URL voor SumUp wordt **automatisch** afgeleid van waar de app
+> draait — die hoef je nergens in te stellen.
 
 ---
 

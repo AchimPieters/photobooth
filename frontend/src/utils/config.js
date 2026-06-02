@@ -23,6 +23,17 @@
 
 import { getSettings, DEFAULT_STRIP_TEMPLATE, DEFAULT_PASSPORT_TEMPLATE } from './settings'
 
+// Callback-URL voor SumUp leidt de app zelf af van waar hij draait, zodat er
+// niets te configureren valt en de betaling altijd terugkeert naar deze app —
+// op GitHub Pages, een eigen domein of lokaal. Geen instelling meer nodig.
+function autoBaseUrl() {
+  if (typeof window !== 'undefined' && window.location && window.location.origin) {
+    const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
+    return window.location.origin + base
+  }
+  return import.meta.env.VITE_BASE_URL || 'https://achimpieters.github.io/photobooth'
+}
+
 // De actieve template voor een product ('strip' of 'passport'). Valt terug op
 // de eerste template van dat product, en uiteindelijk op de ingebouwde default.
 export function getActiveTemplate(product) {
@@ -40,12 +51,12 @@ export function getConfig() {
   return {
     price:             s.price,
     passportPrice:     s.passportPrice,
-    currency:          s.currency,
+    currency:          s.currency || 'EUR',
     sumupAffiliateKey: s.sumupAffiliateKey || (import.meta.env.VITE_SUMUP_KEY ?? ''),
     countdownSecs:     s.countdownSecs,
     autoRestartSecs:   s.autoRestartSecs,
     inactivityResetSecs: s.inactivityResetSecs,
-    baseUrl:           s.baseUrl || (import.meta.env.VITE_BASE_URL ?? 'https://achimpieters.github.io/photobooth'),
+    baseUrl:           autoBaseUrl(),
     // Afgeleid uit de actieve templates — de schermen blijven dezelfde velden lezen.
     totalPhotos:       strip.photoCount,
     stripFooter:       strip.footer || '',
