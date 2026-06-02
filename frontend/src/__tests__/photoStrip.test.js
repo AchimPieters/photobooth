@@ -61,7 +61,7 @@ describe('buildPrintSheet', () => {
     expect(result).toBeNull()
   })
 
-  it('geeft een data-URL terug (4×6"-vel met 2 strips)', async () => {
+  it('geeft een data-URL terug (volledig vel, grid)', async () => {
     const result = await buildPrintSheet(['a', 'b', 'c', 'd'])
     expect(result).toMatch(/^data:/)
   })

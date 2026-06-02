@@ -22,23 +22,29 @@
  **/
 
 /**
- * Fotostrip + print-vel voor de Canon SELPHY CP1500.
+ * Foto-vel voor de Canon SELPHY CP1500.
  *
- * De SELPHY is een dye-sub printer met één vast mediaformaat tegelijk. We
- * leggen daarom ALLES op een 4×6" Postcard-vel (100×150 mm @ 300 dpi =
- * 1200×1800 px), zodat er nooit van papier/cassette gewisseld hoeft te worden.
+ * Het hele vel is ÉÉN kant-en-klaar ontwerp: de foto's in een grid (Card 1,
+ * L 2×2, Postcard 2×3), met footer en een optionele event-overlay over het
+ * volledige vel. Borderless geprint; de klant krijgt het vel zo uit de printer
+ * (geen knippen).
  *
- * - buildPrintSheet(): 4×6"-vel met TWEE identieke strips naast elkaar en een
- *   snijlijn in het midden → na het printen doormidden knippen = 2 strips van
- *   ~50×150 mm (klassiek photobooth-formaat). Wordt borderless geprint.
- * - buildStrip(): één losse strip (gebruikt voor on-screen preview/tests).
- * - buildTemplateGuide(): download-bare ontwerpgids op exact één-strip-formaat,
+ * - buildPrintSheet(): het volledige vel op options.paper-formaat.
+ * - buildStrip(): één canvas (gebruikt voor tests).
+ * - buildTemplateGuide(): download-bare ontwerpgids op exact velformaat,
  *   getagd op 300 dpi met maatvoering in px/mm/inch.
  *
  * Volledig client-side, werkt op iOS 12 Safari.
  */
 
-import { paperPx, PRINT_DPI as PAPER_DPI } from './papers'
+import { paperPx, getPaper, PRINT_DPI as PAPER_DPI } from './papers'
+
+// Aantal kolommen in het foto-grid voor dit papierformaat. Smalle vellen (card)
+// krijgen 1 kolom, bredere (L, postcard) 2 — conform de officiële templates
+// (Card 1, L 2×2, Postcard 2×3).
+export function gridColumns(paper) {
+  return getPaper(paper).wmm >= 80 ? 2 : 1
+}
 
 // 300 dpi. Het vel-formaat is nu instelbaar per printer (zie papers.js);
 // de constanten hieronder houden de oude 4×6"-default aan en dienen als
@@ -61,24 +67,29 @@ export const GUIDE_DPI = 300
 // Berekent de indeling van één strip die een w×h-gebied exact vult: de
 // fotocellen en de voettekst-zone. Gedeeld door de strip-render en de gids,
 // zodat een aangeleverde template altijd 1-op-1 over de print past.
-export function stripLayout(w, h, photoCount, hasFooter) {
+export function stripLayout(w, h, photoCount, hasFooter, cols = 1) {
   const n = Math.max(1, photoCount)
+  const c = Math.max(1, Math.min(cols, n))
+  const rows = Math.ceil(n / c)
   const pad = Math.round(w * 0.05)
   const footerH = hasFooter ? Math.round(h * 0.07) : 0
-  const gap = Math.round(h * 0.01)
+  const gap = Math.round(Math.min(w, h) * 0.02)
   const innerW = w - pad * 2
   const gridH = h - pad * 2 - footerH
-  const cellH = (gridH - (n - 1) * gap) / n
+  const cellW = (innerW - (c - 1) * gap) / c
+  const cellH = (gridH - (rows - 1) * gap) / rows
 
   const cells = []
   for (let i = 0; i < n; i++) {
-    cells.push({ x: pad, y: pad + i * (cellH + gap), w: innerW, h: cellH })
+    const col = i % c
+    const row = Math.floor(i / c)
+    cells.push({ x: pad + col * (cellW + gap), y: pad + row * (cellH + gap), w: cellW, h: cellH })
   }
   const footer = footerH
     ? { x: pad, y: h - pad - footerH, w: innerW, h: footerH }
     : null
 
-  return { cells, footer, pad, footerH }
+  return { cells, footer, pad, footerH, cols: c, rows }
 }
 
 // Rendert één strip in een eigen canvas (w×h). Laadt foto's + optionele
@@ -89,6 +100,7 @@ function renderStripCanvas(photos, w, h, opts = {}) {
     footerText = '',
     overlay = null,
     overlayOpacity = 1,
+    cols = 1,
   } = opts
 
   return new Promise((resolve) => {
@@ -100,8 +112,9 @@ function renderStripCanvas(photos, w, h, opts = {}) {
     ctx.fillStyle = bgColor
     ctx.fillRect(0, 0, w, h)
 
-    const layout = stripLayout(w, h, photos.length, !!footerText)
-    const radius = Math.round(w * 0.02)
+    const layout = stripLayout(w, h, photos.length, !!footerText, cols)
+    const cell0 = layout.cells[0]
+    const radius = cell0 ? Math.round(Math.min(cell0.w, cell0.h) * 0.06) : Math.round(w * 0.02)
 
     const finish = () => {
       // Voettekst
@@ -158,53 +171,19 @@ function renderStripCanvas(photos, w, h, opts = {}) {
 }
 
 /**
- * Bouwt het volledige print-vel voor het gekozen papierformaat: twee identieke
- * strips naast elkaar met een snijlijn in het midden. Dit is wat naar de SELPHY
- * wordt geprint. Het velformaat komt uit options.paper (papier-id, bijv. 'L').
+ * Bouwt het volledige print-vel voor het gekozen papierformaat als ÉÉN
+ * kant-en-klaar ontwerp: de foto's in een grid (Card 1, L 2×2, Postcard 2×3),
+ * met footer en de event-overlay één keer over het hele vel. Geen duplicatie,
+ * geen snijlijn — de klant krijgt het vel zo uit de printer. Velformaat uit
+ * options.paper.
  */
 export async function buildPrintSheet(photos, options = {}) {
   if (!photos || photos.length === 0) return null
 
   const sheetPx = paperPx(options.paper)
-  const sheetW = sheetPx.w
-  const sheetH = sheetPx.h
-  const stripW = Math.round(sheetW / 2)
-
-  const strip = await renderStripCanvas(photos, stripW, sheetH, options)
-
-  const sheet = document.createElement('canvas')
-  sheet.width = sheetW
-  sheet.height = sheetH
-  const ctx = sheet.getContext('2d')
-
-  // Witte achtergrond onder de strips (borderless print vult het vel).
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, sheetW, sheetH)
-
-  // Twee identieke strips naast elkaar.
-  ctx.drawImage(strip, 0, 0)
-  ctx.drawImage(strip, stripW, 0)
-
-  // Snijlijn in het midden (knip hier → 2 strips).
-  ctx.strokeStyle = 'rgba(0,0,0,0.35)'
-  ctx.lineWidth = 2
-  ctx.setLineDash([14, 10])
-  ctx.beginPath()
-  ctx.moveTo(stripW, 0)
-  ctx.lineTo(stripW, sheetH)
-  ctx.stroke()
-  ctx.setLineDash([])
-
-  // Schaartje als knip-hint, boven- en onderaan de snijlijn.
-  ctx.fillStyle = 'rgba(0,0,0,0.4)'
-  ctx.font = '28px sans-serif'
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'top'
-  ctx.fillText('✂', stripW, 6)
-  ctx.textBaseline = 'bottom'
-  ctx.fillText('✂', stripW, sheetH - 6)
-
-  return sheet.toDataURL('image/jpeg', 0.92)
+  const cols = gridColumns(options.paper)
+  const canvas = await renderStripCanvas(photos, sheetPx.w, sheetPx.h, { ...options, cols })
+  return canvas.toDataURL('image/jpeg', 0.92)
 }
 
 /**
@@ -226,15 +205,16 @@ export async function buildStrip(photos, options = {}) {
 
 /**
  * Genereert een download-bare ontwerpgids (PNG, transparante achtergrond) op
- * exact één-strip-formaat (50×150 mm). Toont het fotoraster, het min-kader
+ * exact het volledige velformaat. Toont het foto-grid, het min-kader
  * (vrijhouden voor gezichten), het max-kader (fotorand waar decoratie mag
  * vallen) en de voettekst-zone. Getagd op 300 dpi met maatvoering.
  */
 export function buildTemplateGuide(options = {}) {
   const sheetPx = paperPx(options.paper)
-  const w = Math.round(sheetPx.w / 2) // één strip = halve velbreedte
+  const w = sheetPx.w // volledig vel
   const h = sheetPx.h
   const photoCount = Math.max(1, Math.min(8, options.photoCount || 4))
+  const cols = gridColumns(options.paper)
   // Volg de werkelijke footer-status van de strip: anders reserveert de gids
   // een footer-zone die de echte print niet heeft (of omgekeerd) → template
   // past niet meer. Default true voor terugwaartse compatibiliteit.
@@ -249,7 +229,7 @@ export function buildTemplateGuide(options = {}) {
   // transparantie ziet.
   drawChecker(ctx, w, h)
 
-  const layout = stripLayout(w, h, photoCount, hasFooter)
+  const layout = stripLayout(w, h, photoCount, hasFooter, cols)
 
   // Max-kader / bleed (volledige canvas).
   ctx.strokeStyle = '#e0245e'

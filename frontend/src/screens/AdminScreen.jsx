@@ -378,7 +378,7 @@ function TemplateManager({ form, setForm, lang }) {
   }
   const markOk = () => setT({ designedFor: { photoCount: selected.photoCount, hasFooter: curFooter } })
 
-  // Live preview (alleen strip) — het VOLLEDIGE printvel (twee strips + snijlijn),
+  // Live preview (alleen strip) — het VOLLEDIGE printvel (één grid-ontwerp),
   // exact wat de klant en de printer krijgen, op de juiste papierverhouding.
   useEffect(() => {
     if (!isStrip) { setPreviewUrl(null); return }
