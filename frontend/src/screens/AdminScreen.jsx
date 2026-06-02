@@ -27,9 +27,9 @@ import { getConfig } from '../utils/config'
 import { getLicenseInfo, verifyAndParseLicense, saveLicense, removeLicense, getRawLicense } from '../utils/license'
 import { formatDate, t } from '../utils/i18n'
 import { useLang } from '../context/LangContext'
-import { buildTemplateGuide, buildStrip } from '../utils/photoStrip'
+import { buildTemplateGuide, buildPrintSheet } from '../utils/photoStrip'
 import { passportCount } from '../utils/passportStrip'
-import { PAPERS, DEFAULT_PAPER, paperLabel, stripPhotoCount, paperPx } from '../utils/papers'
+import { PAPERS, DEFAULT_PAPER, paperLabel, stripPhotoCount } from '../utils/papers'
 
 // Maximale opslag voor een geüploade overlay (localStorage is ~5MB).
 const MAX_TEMPLATE_BYTES = 3.5 * 1024 * 1024
@@ -378,15 +378,15 @@ function TemplateManager({ form, setForm, lang }) {
   }
   const markOk = () => setT({ designedFor: { photoCount: selected.photoCount, hasFooter: curFooter } })
 
-  // Live preview (alleen strip).
+  // Live preview (alleen strip) — het VOLLEDIGE printvel (twee strips + snijlijn),
+  // exact wat de klant en de printer krijgen, op de juiste papierverhouding.
   useEffect(() => {
     if (!isStrip) { setPreviewUrl(null); return }
     let cancelled = false
-    const sheet = paperPx(selected.paper)
     const photos = Array.from({ length: selected.photoCount }, (_, i) => dummyPhoto(i, selected.photoCount))
     const id = setTimeout(() => {
-      buildStrip(photos, {
-        width: Math.round(sheet.w / 2), height: sheet.h,
+      buildPrintSheet(photos, {
+        paper: selected.paper,
         footerText: (selected.footer || '').trim(),
         bgColor: selected.bg, overlay: selected.overlay || null,
         overlayOpacity: selected.overlayOpacity ?? 1,
