@@ -97,9 +97,18 @@ papier en aantal — en kan een overlay nooit losraken van zijn aantal/papier.
    - Strip: aantal vrij (1–8), met een voorstel per papier.
    - Pasfoto: aantal geklemd op wat fysiek past (Card→1, L→4, Postcard→6).
 3. Strip: zet **footer** + **achtergrond**; download de **ontwerpgids** (exacte
-   maat + aantal vakken), ontwerp je overlay en upload de transparante PNG.
+   maat + aantal vakken) of de **officiële InDesign-template** (met 3 mm bleed,
+   cyan = fotokader, magenta = max. aanbevolen overlay), ontwerp je overlay en
+   upload de transparante PNG.
 4. De **live preview** toont de strip met voorbeeldfoto's + overlay zoals geprint.
 5. Kies bovenaan de **actieve** strip- en pasfoto-template.
+
+### Ontwerp-templates voor vormgevers
+In de map [`Templates/`](../Templates) staan per papierformaat een **InDesign**-
+bestand + **PNG**-preview, met **3 mm bleed**. **Cyan** = het fotokader, **magenta**
+= de maximale aanbevolen overlay over de foto (de vormgever is vrij). Maten:
+Card 54×86 mm, L 89×119 mm, Postcard 10×15 cm (100×150 mm). Lever de uiteindelijke
+overlay aan als **transparante PNG @ 300 dpi**.
 
 ### Pasfoto's — maat ligt fysiek vast
 Een pasfoto is **altijd 35×45 mm**, ongeacht het papierformaat. Het papier

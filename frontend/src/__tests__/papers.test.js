@@ -31,9 +31,9 @@ describe('papers', () => {
     expect(PAPERS.L.hmm).toBe(119)
   })
 
-  it('Postcard is 100×148 mm (printgebied)', () => {
+  it('Postcard is 100×150 mm (10×15 cm, conform ontwerp-templates)', () => {
     expect(PAPERS.postcard.wmm).toBe(100)
-    expect(PAPERS.postcard.hmm).toBe(148)
+    expect(PAPERS.postcard.hmm).toBe(150)
   })
 
   it('Card is 54×86 mm', () => {

@@ -34,6 +34,19 @@ import { PAPERS, DEFAULT_PAPER, paperLabel, stripPhotoCount, paperPx } from '../
 // Maximale opslag voor een geüploade overlay (localStorage is ~5MB).
 const MAX_TEMPLATE_BYTES = 3.5 * 1024 * 1024
 
+// Officiële ontwerp-templates (InDesign, met 3 mm bleed + cyan/magenta kaders)
+// in de repo-map Templates/ — bedoeld voor grafisch vormgevers om mee te werken.
+const REPO_TEMPLATES_BASE = 'https://github.com/AchimPieters/photobooth/blob/main/Templates/'
+const OFFICIAL_TEMPLATE_FILE = {
+  L: 'L-formaat 89x119mm.indd',
+  postcard: 'Postcard 10x15 cm (4x6").indd',
+  card: 'Card 54x86.indd',
+}
+function officialTemplateUrl(paper) {
+  const name = OFFICIAL_TEMPLATE_FILE[paper]
+  return name ? REPO_TEMPLATES_BASE + encodeURIComponent(name) : null
+}
+
 const uid = () => `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
 
 function newTemplate(product) {
@@ -84,6 +97,7 @@ const TPL = {
     overlay: 'Event-overlay (PNG)',
     overlayHelp: 'PNG met transparantie, 300 dpi, bovenop de strip geprint. Download de ontwerpgids (exacte maat + aantal vakken) en houd het MIN-kader vrij voor gezichten.',
     guide: '⬇ Download ontwerpgids',
+    official: '⬇ Officiële template (InDesign, 3 mm bleed)',
     upload: 'Overlay kiezen…',
     replace: 'Andere overlay kiezen…',
     remove: 'Overlay verwijderen',
@@ -122,6 +136,7 @@ const TPL = {
     overlay: 'Event overlay (PNG)',
     overlayHelp: 'PNG with transparency, 300 dpi, printed on top of the strip. Download the design guide (exact size + cells) and keep the MIN frame clear for faces.',
     guide: '⬇ Download design guide',
+    official: '⬇ Official template (InDesign, 3 mm bleed)',
     upload: 'Choose overlay…',
     replace: 'Choose another overlay…',
     remove: 'Remove overlay',
@@ -467,6 +482,12 @@ function TemplateManager({ form, setForm, lang }) {
               <p style={s.tplHelp}>{tpl.overlayHelp}</p>
 
               <button style={s.tplGuideBtn} onClick={downloadGuide}>{tpl.guide}</button>
+              {officialTemplateUrl(selected.paper) && (
+                <a style={{ ...s.tplGuideBtn, display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: 8, background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.85)' }}
+                  href={officialTemplateUrl(selected.paper)} target="_blank" rel="noopener noreferrer">
+                  {tpl.official}
+                </a>
+              )}
 
               <div style={s.tplPreviewWrap}>
                 {previewUrl ? <img src={previewUrl} alt="preview" style={s.tplPreview} /> : <p style={s.hint}>…</p>}

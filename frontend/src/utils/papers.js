@@ -24,10 +24,10 @@
 /**
  * Papierformaten voor de Canon SELPHY CP1500 (dye-sub, 300×300 dpi).
  *
- * De maten hieronder zijn de officiële PRINTGEBIEDEN (na het afscheuren van de
- * perforatieranden), bevestigd via de Canon-handleiding. Eén SELPHY heeft één
- * formaat tegelijk geladen; met meerdere printers kun je per product (fotostrip
- * vs. pasfoto's) een ander formaat printen.
+ * De maten hieronder komen overeen met de officiële ontwerp-templates in de
+ * map Templates/ (Card 54×86, L 89×119, Postcard 10×15 cm = 100×150 mm). De
+ * SELPHY print postcard borderless ~100×148; de onderste ~2 mm valt in de
+ * overscan. Eén SELPHY heeft één formaat tegelijk geladen.
  */
 
 export const PRINT_DPI = 300
@@ -40,7 +40,7 @@ export const mmToPx = (mm) => Math.round((mm / 25.4) * PRINT_DPI)
 // papierformaat: zo kan het nooit losraken van de per-formaat opgeslagen
 // event-template. Wil je een ander aantal? Pas het hier aan — één bron.
 export const PAPERS = {
-  postcard: { id: 'postcard', wmm: 100, hmm: 148, strip: 5, nl: 'Postcard 10×15 cm (4×6")', en: 'Postcard 4×6" (10×15 cm)' },
+  postcard: { id: 'postcard', wmm: 100, hmm: 150, strip: 5, nl: 'Postcard 10×15 cm (4×6")', en: 'Postcard 4×6" (10×15 cm)' },
   L:        { id: 'L',        wmm: 89,  hmm: 119, strip: 4, nl: 'L-formaat 89×119 mm',       en: 'L size 89×119 mm' },
   card:     { id: 'card',     wmm: 54,  hmm: 86,  strip: 3, nl: 'Card 54×86 mm',             en: 'Card 54×86 mm' },
 }
