@@ -60,6 +60,8 @@ const T = {
     'done.no_print':     '🔒  Printen uitgeschakeld',
     'done.no_print_sub': 'Activeer een licentie via het admin panel om te printen.',
     'done.print_hint':   'Verschijnt er een printvenster? Tik op Print om te bevestigen.',
+    'done.qr_title':     '📲  Scan om je foto te downloaden',
+    'done.qr_expiry':    'Beschikbaar voor beperkte tijd, daarna verwijderd',
 
     // PassportInstructionScreen
     'pi.step':           'Stap {n} van {total}',
@@ -129,6 +131,11 @@ const T = {
     'adm.pay.passport_simple': "Prijs pasfoto's (€)",
     'adm.pay.currency':   'Valuta',
     'adm.pay.url':        'Callback basis-URL',
+    'adm.qr.section':     '📲 Digitale kopie (QR)',
+    'adm.qr.help':        'Optioneel. Vul de URL van je upload-Worker in; dan toont het klaar-scherm een QR-code waarmee de gast de foto kan downloaden. Leeg = uit. Zie docs/configuration.md voor de Worker.',
+    'adm.qr.url':         'Upload-URL (Cloudflare Worker)',
+    'adm.qr.key':         'Upload-sleutel (optioneel)',
+    'adm.qr.key_ph':      'Zelfde als UPLOAD_KEY in de Worker',
     'adm.booth.section':  '📷 Fotobooth',
     'adm.booth.photos_info': "🎞️ {n} foto's per strip op {paper} — vast per papierformaat, zodat de strip altijd bij de event-template past.",
     'adm.booth.countdown':'Aftelling (1–10 sec)',
@@ -187,6 +194,8 @@ const T = {
     'done.no_print':     '🔒  Printing disabled',
     'done.no_print_sub': 'Activate a licence via the admin panel to enable printing.',
     'done.print_hint':   'A print dialog may appear — tap Print to confirm.',
+    'done.qr_title':     '📲  Scan to download your photo',
+    'done.qr_expiry':    'Available for a limited time, then deleted',
 
     // PassportInstructionScreen
     'pi.step':           'Step {n} of {total}',
@@ -256,6 +265,11 @@ const T = {
     'adm.pay.passport_simple': 'Passport photos price (€)',
     'adm.pay.currency':   'Currency',
     'adm.pay.url':        'Callback base URL',
+    'adm.qr.section':     '📲 Digital copy (QR)',
+    'adm.qr.help':        'Optional. Enter your upload Worker URL; the done screen then shows a QR code for the guest to download the photo. Empty = off. See docs/configuration.md for the Worker.',
+    'adm.qr.url':         'Upload URL (Cloudflare Worker)',
+    'adm.qr.key':         'Upload key (optional)',
+    'adm.qr.key_ph':      'Same as UPLOAD_KEY in the Worker',
     'adm.booth.section':  '📷 Photo Booth',
     'adm.booth.photos_info': '🎞️ {n} photos per strip on {paper} — fixed per paper size, so the strip always matches the event template.',
     'adm.booth.countdown':'Countdown (1–10 sec)',

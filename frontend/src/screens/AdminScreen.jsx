@@ -571,6 +571,8 @@ export default function AdminScreen({ onClose }) {
       price:             String(c.price),
       passportPrice:     String(c.passportPrice),
       countdownSecs:     String(c.countdownSecs),
+      photoUploadUrl:    c.photoUploadUrl,
+      photoUploadKey:    c.photoUploadKey,
       templates:         JSON.parse(JSON.stringify(c.templates)),
       activeStripTemplateId:    c.activeStripTemplateId,
       activePassportTemplateId: c.activePassportTemplateId,
@@ -614,6 +616,8 @@ export default function AdminScreen({ onClose }) {
       price:             Number(form.price) || 0,
       passportPrice:     Number(form.passportPrice) || 0,
       countdownSecs:     Math.max(1, Math.min(10,  parseInt(form.countdownSecs)  || 3)),
+      photoUploadUrl:    (form.photoUploadUrl || '').trim().replace(/\/$/, ''),
+      photoUploadKey:    (form.photoUploadKey || '').trim(),
       templates,
       activeStripTemplateId:    form.activeStripTemplateId,
       activePassportTemplateId: form.activePassportTemplateId,
@@ -668,6 +672,21 @@ export default function AdminScreen({ onClose }) {
           <Field label={t('adm.booth.countdown', lang)}>
             <input style={s.input} type="number" min="1" max="10"
               value={form.countdownSecs} onChange={e => set('countdownSecs', e.target.value)} />
+          </Field>
+        </Section>
+
+        {/* ── Digitale kopie (QR) ── */}
+        <Section title={t('adm.qr.section', lang)}>
+          <p style={s.tplHelp}>{t('adm.qr.help', lang)}</p>
+          <Field label={t('adm.qr.url', lang)}>
+            <input style={s.input} type="url" value={form.photoUploadUrl}
+              onChange={e => set('photoUploadUrl', e.target.value)}
+              placeholder="https://photobooth-photos.<jij>.workers.dev" autoComplete="off" />
+          </Field>
+          <Field label={t('adm.qr.key', lang)}>
+            <input style={s.input} type="text" value={form.photoUploadKey}
+              onChange={e => set('photoUploadKey', e.target.value)}
+              placeholder={t('adm.qr.key_ph', lang)} autoComplete="off" />
           </Field>
         </Section>
 

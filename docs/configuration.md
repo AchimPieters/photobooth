@@ -112,6 +112,14 @@ bestand + **PNG**-preview, met **3 mm bleed**. **Cyan** = het fotokader, **magen
 Card 54×86 mm, L 89×119 mm, Postcard 10×15 cm (100×150 mm). Lever de uiteindelijke
 overlay aan als **transparante PNG @ 300 dpi**.
 
+### Digitale kopie via QR (optioneel)
+Wil je dat de gast zijn foto ook digitaal kan downloaden? Deploy de meegeleverde
+**Cloudflare Worker** in [`upload-worker/`](../upload-worker) (gratis tier, foto's
+op je eigen account, automatisch verwijderd). Plak daarna de Worker-URL in het
+admin-paneel onder **📲 Digitale kopie (QR)**. Na een betaalde sessie verschijnt
+dan een QR-code op het klaar-scherm. Leeg laten = functie uit. Zie
+[`upload-worker/README.md`](../upload-worker/README.md) voor de stappen.
+
 ### Pasfoto's — maat ligt fysiek vast
 Een pasfoto is **altijd 35×45 mm**, ongeacht het papierformaat. Het papier
 bepaalt alleen hoeveel er op het vel passen. Pasfoto's gebruiken **geen** overlay,

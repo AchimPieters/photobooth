@@ -56,6 +56,10 @@ const DEFAULTS = {
   passwordHash:       '',
   language:           'nl',
   inactivityResetSecs: 30,
+  // Digitale kopie (QR): URL van de upload-Worker (Cloudflare). Leeg = uit.
+  // De optionele sleutel beschermt de Worker tegen misbruik.
+  photoUploadUrl:     '',
+  photoUploadKey:     '',
   // Alle papier-/aantal-/overlay-instellingen zitten nu in templates.
   templates: [ { ...DEFAULT_STRIP_TEMPLATE }, { ...DEFAULT_PASSPORT_TEMPLATE } ],
   activeStripTemplateId:    DEFAULT_STRIP_TEMPLATE.id,

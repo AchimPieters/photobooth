@@ -1,0 +1,17 @@
+name = "photobooth-photos"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# R2-bucket waar de foto's tijdelijk worden bewaard.
+# Maak 'm eerst aan:  wrangler r2 bucket create photobooth-photos
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "photobooth-photos"
+
+[vars]
+# Bewaartijd in uren; daarna verwijdert de Worker de foto bij opvragen.
+RETENTION_HOURS = "24"
+
+# UPLOAD_KEY is een SECRET (niet hier invullen):
+#   wrangler secret put UPLOAD_KEY
+# Zet dezelfde waarde in de admin onder "Upload-sleutel".
