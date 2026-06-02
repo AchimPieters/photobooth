@@ -19,10 +19,12 @@
 
 ## Hardware
 
+![Photobooth hardware — iPad, SumUp-kaartlezer en Canon SELPHY CP1500-printers](Images/photobooth-hardware.png)
+
 | Apparaat | Model |
 |---|---|
 | iPad | Mini 2 (iOS 12) of nieuwer |
-| Printer | Canon SELPHY CP1500 (AirPrint) |
+| Printer | Canon SELPHY CP1500 (AirPrint) — 1 of 2 (bijv. strip + pasfoto) |
 | Betaalterminal | SumUp Air of Solo |
 
 ## Snel starten
