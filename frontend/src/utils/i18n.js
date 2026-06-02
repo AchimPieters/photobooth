@@ -59,6 +59,7 @@ const T = {
     'done.restart':      '↩  Nieuwe sessie  ({secs}s)',
     'done.no_print':     '🔒  Printen uitgeschakeld',
     'done.no_print_sub': 'Activeer een licentie via het admin panel om te printen.',
+    'done.print_hint':   'Verschijnt er een printvenster? Tik op Print om te bevestigen.',
 
     // PassportInstructionScreen
     'pi.step':           'Stap {n} van {total}',
@@ -185,6 +186,7 @@ const T = {
     'done.restart':      '↩  New session  ({secs}s)',
     'done.no_print':     '🔒  Printing disabled',
     'done.no_print_sub': 'Activate a licence via the admin panel to enable printing.',
+    'done.print_hint':   'A print dialog may appear — tap Print to confirm.',
 
     // PassportInstructionScreen
     'pi.step':           'Step {n} of {total}',

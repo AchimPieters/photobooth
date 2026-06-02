@@ -570,11 +570,7 @@ export default function AdminScreen({ onClose }) {
       sumupAffiliateKey: c.sumupAffiliateKey,
       price:             String(c.price),
       passportPrice:     String(c.passportPrice),
-      currency:          c.currency,
-      baseUrl:           c.baseUrl,
       countdownSecs:     String(c.countdownSecs),
-      autoRestartSecs:    String(c.autoRestartSecs),
-      inactivityResetSecs: String(c.inactivityResetSecs),
       templates:         JSON.parse(JSON.stringify(c.templates)),
       activeStripTemplateId:    c.activeStripTemplateId,
       activePassportTemplateId: c.activePassportTemplateId,
@@ -617,11 +613,7 @@ export default function AdminScreen({ onClose }) {
       sumupAffiliateKey: form.sumupAffiliateKey.trim(),
       price:             Number(form.price) || 0,
       passportPrice:     Number(form.passportPrice) || 0,
-      currency:          form.currency.trim().toUpperCase() || 'EUR',
-      baseUrl:           form.baseUrl.trim(),
       countdownSecs:     Math.max(1, Math.min(10,  parseInt(form.countdownSecs)  || 3)),
-      autoRestartSecs:    Math.max(5,  Math.min(120, parseInt(form.autoRestartSecs)    || 15)),
-      inactivityResetSecs: Math.max(10, Math.min(300, parseInt(form.inactivityResetSecs) || 30)),
       templates,
       activeStripTemplateId:    form.activeStripTemplateId,
       activePassportTemplateId: form.activePassportTemplateId,
@@ -666,15 +658,6 @@ export default function AdminScreen({ onClose }) {
             <input style={s.input} type="number" step="0.01" min="0"
               value={form.passportPrice} onChange={e => set('passportPrice', e.target.value)} />
           </Field>
-          <Field label={t('adm.pay.currency', lang)}>
-            <input style={s.input} type="text" maxLength={3}
-              value={form.currency} onChange={e => set('currency', e.target.value)} />
-          </Field>
-          <Field label={t('adm.pay.url', lang)}>
-            <input style={s.input} type="url"
-              value={form.baseUrl} onChange={e => set('baseUrl', e.target.value)}
-              placeholder="https://achimpieters.github.io/photobooth" />
-          </Field>
         </Section>
 
         {/* ── Templates ── */}
@@ -685,14 +668,6 @@ export default function AdminScreen({ onClose }) {
           <Field label={t('adm.booth.countdown', lang)}>
             <input style={s.input} type="number" min="1" max="10"
               value={form.countdownSecs} onChange={e => set('countdownSecs', e.target.value)} />
-          </Field>
-          <Field label={t('adm.booth.restart', lang)}>
-            <input style={s.input} type="number" min="5" max="120"
-              value={form.autoRestartSecs} onChange={e => set('autoRestartSecs', e.target.value)} />
-          </Field>
-          <Field label={t('adm.booth.idle', lang)}>
-            <input style={s.input} type="number" min="10" max="300"
-              value={form.inactivityResetSecs} onChange={e => set('inactivityResetSecs', e.target.value)} />
           </Field>
         </Section>
 

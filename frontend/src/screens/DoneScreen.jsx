@@ -61,6 +61,10 @@ export default function DoneScreen({ stripDataUrl, onRestart, licensed }) {
         <img src={stripDataUrl} alt="strip" style={s.strip} />
       )}
 
+      {licensed && stripDataUrl && (
+        <p style={s.printHint}>{t('done.print_hint', lang)}</p>
+      )}
+
       {!licensed && (
         <div style={s.demoBox}>
           <p style={s.demoText}>{t('done.no_print', lang)}</p>
@@ -89,6 +93,7 @@ const s = {
   title: { color: '#fff', fontSize: 52, fontWeight: 900 },
   sub: { color: 'rgba(255,255,255,0.7)', fontSize: 24, fontWeight: 300 },
   strip: { width: '45%', maxWidth: 280, borderRadius: 10, boxShadow: '0 8px 30px rgba(0,0,0,0.5)', flexShrink: 0 },
+  printHint: { color: 'rgba(255,255,255,0.5)', fontSize: 15, textAlign: 'center', padding: '0 40px', lineHeight: 1.4 },
   actions: { width: '100%', padding: '0 50px', display: 'flex', flexDirection: 'column', gap: 16, marginTop: 'auto' },
   demoBox: { background: 'rgba(233,69,96,0.08)', border: '1px solid rgba(233,69,96,0.2)', borderRadius: 14, padding: '14px 20px', textAlign: 'center', width: '100%', boxSizing: 'border-box' },
   demoText: { color: '#e94560', fontSize: 17, fontWeight: 700, marginBottom: 4 },
