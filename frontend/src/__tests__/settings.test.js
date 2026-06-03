@@ -78,6 +78,22 @@ describe('settings — template-model', () => {
     expect(s.templates.find(t => t.id === 's1').photoCount).toBe(5)
   })
 
+  it('strip-aantal volgt altijd het papierformaat (oude vrije telling wordt gecorrigeerd)', () => {
+    saveSettings({
+      templates: [
+        // L hoort 4 te zijn; een oude installatie had hier vrij 8 gekozen.
+        { id: 's1', name: 'A', product: 'strip', paper: 'L', photoCount: 8, footer: '', bg: '#000', overlay: null, overlayOpacity: 1, designedFor: null },
+        { id: 'p1', name: 'P', product: 'passport', paper: 'postcard', photoCount: 6 },
+      ],
+      activeStripTemplateId: 's1',
+      activePassportTemplateId: 'p1',
+    })
+    const s = getSettings()
+    expect(s.templates.find(t => t.id === 's1').photoCount).toBe(4) // stripPhotoCount('L')
+    // Pasfoto-aantal blijft vrij (binnen capaciteit).
+    expect(s.templates.find(t => t.id === 'p1').photoCount).toBe(6)
+  })
+
   it('corrigeert een ongeldige actieve id naar de eerste van het product', () => {
     saveSettings({
       templates: [

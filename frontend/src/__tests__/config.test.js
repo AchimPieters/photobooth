@@ -36,6 +36,7 @@ describe('AppConfig', () => {
   it('countdownSecs is positief',    () => expect(config.countdownSecs).toBeGreaterThan(0))
   it('autoRestartSecs is positief',  () => expect(config.autoRestartSecs).toBeGreaterThan(0))
   it('baseUrl is automatisch afgeleid (url)', () => expect(config.baseUrl).toMatch(/^https?:\/\//))
+  it('digitale kopie staat standaard uit', () => expect(getConfig().photoUploadUrl).toBe(''))
 
   it('default: totalPhotos = aantal van de actieve strip-template (4)', () => {
     expect(getConfig().totalPhotos).toBe(DEFAULT_STRIP_TEMPLATE.photoCount)

@@ -56,6 +56,10 @@ const DEFAULTS = {
   passwordHash:       '',
   language:           'nl',
   inactivityResetSecs: 30,
+  // Digitale kopie (QR): URL van de upload-Worker (Cloudflare). Leeg = uit.
+  // De optionele sleutel beschermt de Worker tegen misbruik.
+  photoUploadUrl:     '',
+  photoUploadKey:     '',
   // Alle papier-/aantal-/overlay-instellingen zitten nu in templates.
   templates: [ { ...DEFAULT_STRIP_TEMPLATE }, { ...DEFAULT_PASSPORT_TEMPLATE } ],
   activeStripTemplateId:    DEFAULT_STRIP_TEMPLATE.id,
@@ -117,6 +121,10 @@ export function getSettings() {
       if (!Array.isArray(merged.templates) || merged.templates.length === 0) {
         merged.templates = [ { ...DEFAULT_STRIP_TEMPLATE }, { ...DEFAULT_PASSPORT_TEMPLATE } ]
       }
+      // Strip-aantal volgt altijd het papierformaat (één bron: papers.js), ook
+      // voor oudere installaties met een vrij gekozen aantal.
+      merged.templates = merged.templates.map(t =>
+        t.product === 'strip' ? { ...t, photoCount: stripPhotoCount(t.paper) } : t)
       const strips = merged.templates.filter(t => t.product === 'strip')
       const passes = merged.templates.filter(t => t.product === 'passport')
       if (!strips.some(t => t.id === merged.activeStripTemplateId)) merged.activeStripTemplateId = strips[0]?.id

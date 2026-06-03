@@ -57,6 +57,8 @@ export function getConfig() {
     autoRestartSecs:   s.autoRestartSecs,
     inactivityResetSecs: s.inactivityResetSecs,
     baseUrl:           autoBaseUrl(),
+    photoUploadUrl:    (s.photoUploadUrl || '').trim(),
+    photoUploadKey:    (s.photoUploadKey || '').trim(),
     // Afgeleid uit de actieve templates — de schermen blijven dezelfde velden lezen.
     totalPhotos:       strip.photoCount,
     stripFooter:       strip.footer || '',
