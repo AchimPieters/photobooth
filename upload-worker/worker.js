@@ -27,22 +27,35 @@
 // - GET  /p/<id>      → mobiele downloadpagina (foto + downloadknop).
 // - GET  /p/<id>?raw=1→ de ruwe JPEG.
 //
-// Foto's verlopen na RETENTION_HOURS (runtime-check + R2-lifecycle als backstop).
-// Een optionele UPLOAD_KEY (secret) beschermt het uploaden tegen misbruik.
+// Foto's verlopen na RETENTION_HOURS (runtime-check bij opvragen + uurlijkse
+// cron-sweep als vangnet, zodat ook nooit-opgevraagde foto's verdwijnen).
+// Een verplichte UPLOAD_KEY (secret) beschermt het uploaden tegen misbruik;
+// zonder die secret weigert de Worker te uploaden.
 
 const MAX_BYTES = 8 * 1024 * 1024
 
-function cors(origin) {
-  return {
-    'Access-Control-Allow-Origin': origin || '*',
+// Welke origins mogen het upload-endpoint vanuit een browser aanspreken.
+// Comma-gescheiden in env.ALLOWED_ORIGINS; default = de GitHub Pages-host.
+function allowedOrigins(env) {
+  return (env.ALLOWED_ORIGINS || 'https://achimpieters.github.io')
+    .split(',').map(s => s.trim()).filter(Boolean)
+}
+function cors(origin, env) {
+  const headers = {
     'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-Upload-Key',
     'Access-Control-Max-Age': '86400',
+    'Vary': 'Origin',
   }
+  // Reflecteer alleen een origin die op de allowlist staat (geen wildcard).
+  if (origin && allowedOrigins(env).includes(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin
+  }
+  return headers
 }
-function json(obj, status, origin) {
+function json(obj, status, origin, env) {
   return new Response(JSON.stringify(obj), {
-    status, headers: { 'Content-Type': 'application/json', ...cors(origin) },
+    status, headers: { 'Content-Type': 'application/json', ...cors(origin, env) },
   })
 }
 
@@ -51,25 +64,28 @@ export default {
     const url = new URL(request.url)
     const origin = request.headers.get('Origin')
 
-    if (request.method === 'OPTIONS') return new Response(null, { headers: cors(origin) })
+    if (request.method === 'OPTIONS') return new Response(null, { headers: cors(origin, env) })
 
     // ── Upload ──
     if (request.method === 'POST' && url.pathname === '/') {
-      if (env.UPLOAD_KEY && request.headers.get('X-Upload-Key') !== env.UPLOAD_KEY) {
-        return json({ error: 'unauthorized' }, 401, origin)
+      // UPLOAD_KEY is verplicht: zonder secret is dit endpoint dicht, zodat het
+      // niet per ongeluk als open foto-hosting op internet komt te staan.
+      if (!env.UPLOAD_KEY) return json({ error: 'server misconfigured' }, 503, origin, env)
+      if (request.headers.get('X-Upload-Key') !== env.UPLOAD_KEY) {
+        return json({ error: 'unauthorized' }, 401, origin, env)
       }
       const ct = request.headers.get('Content-Type') || ''
-      if (!ct.startsWith('image/')) return json({ error: 'image only' }, 415, origin)
+      if (!ct.startsWith('image/')) return json({ error: 'image only' }, 415, origin, env)
       const body = await request.arrayBuffer()
-      if (body.byteLength === 0) return json({ error: 'empty' }, 400, origin)
-      if (body.byteLength > MAX_BYTES) return json({ error: 'too large' }, 413, origin)
+      if (body.byteLength === 0) return json({ error: 'empty' }, 400, origin, env)
+      if (body.byteLength > MAX_BYTES) return json({ error: 'too large' }, 413, origin, env)
 
       const id = crypto.randomUUID().replace(/-/g, '')
       await env.PHOTOS.put(`p/${id}.jpg`, body, {
         httpMetadata: { contentType: 'image/jpeg' },
         customMetadata: { created: String(Date.now()) },
       })
-      return json({ url: `${url.origin}/p/${id}` }, 200, origin)
+      return json({ url: `${url.origin}/p/${id}` }, 200, origin, env)
     }
 
     // ── Ophalen ──
@@ -96,6 +112,25 @@ export default {
 
     return new Response('Not found', { status: 404 })
   },
+
+  // Uurlijkse opruiming: verwijdert álle verlopen foto's, ook degene die nooit
+  // meer worden opgevraagd (de runtime-check bij GET haalt alleen aangeklikte op).
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(sweepExpired(env))
+  },
+}
+
+async function sweepExpired(env) {
+  const hours  = Number(env.RETENTION_HOURS || 24)
+  const cutoff = Date.now() - hours * 3600 * 1000
+  let cursor, truncated = true
+  while (truncated) {
+    const list = await env.PHOTOS.list({ prefix: 'p/', cursor, limit: 1000 })
+    const stale = list.objects.filter(o => o.uploaded.getTime() < cutoff).map(o => o.key)
+    if (stale.length) await env.PHOTOS.delete(stale)
+    truncated = list.truncated
+    cursor    = list.cursor
+  }
 }
 
 function htmlResponse(html, status = 200) {

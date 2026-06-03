@@ -77,17 +77,21 @@ function dummyPhoto(i, total) {
 const TPL = {
   nl: {
     section: '🎞️ Templates',
-    intro: 'Een template legt papierformaat + aantal foto’s vast (en voor strips: footer, achtergrond en de overlay-PNG). Kies per product de actieve template; de klant tikt gewoon Fotostrip of Pasfoto’s.',
-    activeStrip: 'Actieve fotostrip-template',
-    activePassport: "Actieve pasfoto-template",
-    edit: 'Bewerk template',
+    intro: 'Een template bepaalt wat de klant krijgt. Kies per product één ACTIEVE template (✓) — dát krijgt de klant bij Fotostrip of Pasfoto’s. Tik een kaartje om het te bewerken.',
+    groupStrip: '🎞️ Fotostrip',
+    groupPassport: '🪪 Pasfoto’s',
+    activePill: 'ACTIEF',
+    activeSub: 'dit krijgt de klant',
+    makeActive: 'Maak actief',
+    photos: 'foto’s',
+    editingHeading: 'Template bewerken',
     newStrip: '+ Nieuwe strip-template',
     newPassport: '+ Nieuwe pasfoto-template',
     name: 'Naam',
     paper: 'Papierformaat',
-    count: "Aantal foto's",
-    countStrip: 'Aanbevolen voor dit papier: {n}',
-    countPassport: 'Past op dit vel: max {n}',
+    countStripFixed: 'Aantal foto’s ligt vast voor dit papier: {n}',
+    countPassport: "Aantal foto's",
+    countPassportHint: 'Past op dit vel: max {n}',
     del: 'Verwijder template',
     delMin: 'Minstens één template per product vereist.',
     pStrip: 'Fotostrip',
@@ -116,17 +120,21 @@ const TPL = {
   },
   en: {
     section: '🎞️ Templates',
-    intro: 'A template fixes paper size + number of photos (and for strips: footer, background and the overlay PNG). Pick the active template per product; the customer just taps Photo strip or Passport.',
-    activeStrip: 'Active photo-strip template',
-    activePassport: 'Active passport template',
-    edit: 'Edit template',
+    intro: 'A template defines what the customer gets. Pick one ACTIVE template (✓) per product — that’s what the customer gets for Photo strip or Passport. Tap a card to edit it.',
+    groupStrip: '🎞️ Photo strip',
+    groupPassport: '🪪 Passport',
+    activePill: 'ACTIVE',
+    activeSub: 'this is what the customer gets',
+    makeActive: 'Set active',
+    photos: 'photos',
+    editingHeading: 'Edit template',
     newStrip: '+ New strip template',
     newPassport: '+ New passport template',
     name: 'Name',
     paper: 'Paper size',
-    count: 'Number of photos',
-    countStrip: 'Recommended for this paper: {n}',
-    countPassport: 'Fits on this sheet: max {n}',
+    countStripFixed: 'Number of photos is fixed for this paper: {n}',
+    countPassport: 'Number of photos',
+    countPassportHint: 'Fits on this sheet: max {n}',
     del: 'Delete template',
     delMin: 'At least one template per product is required.',
     pStrip: 'Photo strip',
@@ -330,12 +338,22 @@ function TemplateManager({ form, setForm, lang }) {
     setSel(fallback?.id || templates[0].id)
   }
 
+  // Markeer een template als de actieve voor zijn product (= wat de klant krijgt).
+  const setActive = (item) => setForm(f => (
+    item.product === 'strip'
+      ? { ...f, activeStripTemplateId: item.id }
+      : { ...f, activePassportTemplateId: item.id }
+  ))
+  const activeIdFor = (product) =>
+    product === 'strip' ? form.activeStripTemplateId : form.activePassportTemplateId
+
   const isStrip = selected.product === 'strip'
   const capacity = passportCount(selected.paper)
 
-  // Bij papierwissel het aantal binnen de grenzen houden.
+  // Bij papierwissel het aantal corrigeren. Strip: aantal ligt vast per papier.
+  // Pasfoto: binnen de fysieke capaciteit van het vel houden.
   const changePaper = (paper) => {
-    if (isStrip) setT({ paper })
+    if (isStrip) setT({ paper, photoCount: stripPhotoCount(paper) })
     else setT({ paper, photoCount: Math.min(selected.photoCount, passportCount(paper)) })
   }
 
@@ -395,46 +413,51 @@ function TemplateManager({ form, setForm, lang }) {
     return () => { cancelled = true; clearTimeout(id) }
   }, [isStrip, selected.paper, selected.photoCount, selected.footer, selected.bg, selected.overlay, selected.overlayOpacity])
 
-  const tplName = (x) => `${x.name} · ${paperLabel(x.paper, lang)} · ${x.photoCount}`
+  // Eén kaartje per template: tik = bewerken, ✓-knop = actief maken.
+  const renderCard = (x) => {
+    const active  = x.id === activeIdFor(x.product)
+    const editing = x.id === selected.id
+    return (
+      <div key={x.id}
+        style={{ ...s.tplRow, ...(editing ? s.tplRowEditing : {}) }}
+        onClick={() => { setSel(x.id); setTplErr('') }}>
+        <button
+          style={{ ...s.tplRadio, ...(active ? s.tplRadioOn : {}) }}
+          onClick={e => { e.stopPropagation(); setActive(x) }}
+          title={tpl.makeActive} aria-label={tpl.makeActive}>
+          {active ? '✓' : ''}
+        </button>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={s.tplRowName}>{x.name}</p>
+          <p style={s.tplRowSub}>{paperLabel(x.paper, lang)} · {x.photoCount} {tpl.photos}</p>
+        </div>
+        {active && <span style={s.tplActivePill}>{tpl.activePill}</span>}
+      </div>
+    )
+  }
 
   return (
     <Section title={tpl.section}>
       <p style={s.tplHelp}>{tpl.intro}</p>
 
-      {/* Actieve templates per product */}
-      <Field label={tpl.activeStrip}>
-        <select style={s.input} value={form.activeStripTemplateId} onChange={e => setForm(f => ({ ...f, activeStripTemplateId: e.target.value }))}>
-          {strips.map(x => <option key={x.id} value={x.id}>{tplName(x)}</option>)}
-        </select>
-      </Field>
-      <Field label={tpl.activePassport}>
-        <select style={s.input} value={form.activePassportTemplateId} onChange={e => setForm(f => ({ ...f, activePassportTemplateId: e.target.value }))}>
-          {passes.map(x => <option key={x.id} value={x.id}>{tplName(x)}</option>)}
-        </select>
-      </Field>
+      {/* ── Fotostrip-templates ── */}
+      <p style={s.tplGroup}>{tpl.groupStrip}</p>
+      {strips.map(renderCard)}
+      <button style={{ ...s.smBtn, width: '100%', marginTop: 4, marginBottom: 18 }} onClick={() => addTpl('strip')}>
+        {tpl.newStrip}
+      </button>
 
-      <div style={{ height: 8 }} />
+      {/* ── Pasfoto-templates ── */}
+      <p style={s.tplGroup}>{tpl.groupPassport}</p>
+      {passes.map(renderCard)}
+      <button style={{ ...s.smBtn, width: '100%', marginTop: 4, marginBottom: 18 }} onClick={() => addTpl('passport')}>
+        {tpl.newPassport}
+      </button>
 
-      {/* Template kiezen om te bewerken */}
-      <Field label={tpl.edit}>
-        <select style={s.input} value={selected.id} onChange={e => { setSel(e.target.value); setTplErr('') }}>
-          <optgroup label={tpl.pStrip}>
-            {strips.map(x => <option key={x.id} value={x.id}>{tplName(x)}</option>)}
-          </optgroup>
-          <optgroup label={tpl.pPassport}>
-            {passes.map(x => <option key={x.id} value={x.id}>{tplName(x)}</option>)}
-          </optgroup>
-        </select>
-      </Field>
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-        <button style={{ ...s.smBtn, flex: 1 }} onClick={() => addTpl('strip')}>{tpl.newStrip}</button>
-        <button style={{ ...s.smBtn, flex: 1 }} onClick={() => addTpl('passport')}>{tpl.newPassport}</button>
-      </div>
-
-      {/* ── Editor voor de gekozen template ── */}
+      {/* ── Editor voor het aangetikte template ── */}
       <div style={s.printerCard}>
         <p style={{ ...s.label, marginBottom: 10, fontWeight: 700 }}>
-          {selected.product === 'strip' ? tpl.pStrip : tpl.pPassport}
+          {tpl.editingHeading}: {selected.product === 'strip' ? tpl.pStrip : tpl.pPassport}
         </p>
 
         <Field label={tpl.name}>
@@ -450,20 +473,24 @@ function TemplateManager({ form, setForm, lang }) {
           </select>
         </Field>
 
-        <Field label={tpl.count}>
-          <input style={s.input} type="number" min="1" max={isStrip ? 8 : capacity}
-            value={selected.photoCount}
-            onChange={e => {
-              const max = isStrip ? 8 : capacity
-              const n = Math.max(1, Math.min(max, parseInt(e.target.value) || 1))
-              setT({ photoCount: n })
-            }} />
-          <p style={{ ...s.hint, marginTop: 4 }}>
-            {isStrip
-              ? tpl.countStrip.replace('{n}', stripPhotoCount(selected.paper))
-              : tpl.countPassport.replace('{n}', capacity)}
+        {isStrip ? (
+          // Strip: het aantal foto's ligt vast per papierformaat — geen los veld.
+          <p style={s.tplCountFixed}>
+            {tpl.countStripFixed.replace('{n}', stripPhotoCount(selected.paper))}
           </p>
-        </Field>
+        ) : (
+          <Field label={tpl.countPassport}>
+            <input style={s.input} type="number" min="1" max={capacity}
+              value={selected.photoCount}
+              onChange={e => {
+                const n = Math.max(1, Math.min(capacity, parseInt(e.target.value) || 1))
+                setT({ photoCount: n })
+              }} />
+            <p style={{ ...s.hint, marginTop: 4 }}>
+              {tpl.countPassportHint.replace('{n}', capacity)}
+            </p>
+          </Field>
+        )}
 
         {isStrip && (
           <>
@@ -602,7 +629,8 @@ export default function AdminScreen({ onClose }) {
       }
       return {
         id: x.id, name, product: 'strip', paper,
-        photoCount: Math.max(1, Math.min(8, parseInt(x.photoCount) || 4)),
+        // Strip-aantal ligt vast per papierformaat (één bron: papers.js).
+        photoCount: stripPhotoCount(paper),
         footer: typeof x.footer === 'string' ? x.footer : '',
         bg: x.bg || '#000000',
         overlay: x.overlay || null,
@@ -773,6 +801,15 @@ const s = {
   smBtn: { padding: '14px 20px', borderRadius: 12, background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 16, fontWeight: 600 },
   printerCard: { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, padding: 14, marginBottom: 12 },
   tplHelp: { color: 'rgba(255,255,255,0.5)', fontSize: 13, lineHeight: 1.5, margin: '0 0 12px' },
+  tplGroup: { color: 'rgba(255,255,255,0.85)', fontSize: 15, fontWeight: 700, margin: '4px 0 8px' },
+  tplRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12, marginBottom: 8, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' },
+  tplRowEditing: { border: '1px solid rgba(29,161,242,0.7)', background: 'rgba(29,161,242,0.1)' },
+  tplRowName: { color: '#fff', fontSize: 16, fontWeight: 600, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  tplRowSub: { color: 'rgba(255,255,255,0.5)', fontSize: 13, margin: '2px 0 0' },
+  tplRadio: { flexShrink: 0, width: 28, height: 28, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', background: 'transparent', color: '#fff', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 },
+  tplRadioOn: { background: '#27ae60', borderColor: '#27ae60' },
+  tplActivePill: { flexShrink: 0, padding: '4px 10px', borderRadius: 20, background: 'rgba(39,174,96,0.18)', color: '#27ae60', fontSize: 11, fontWeight: 800, letterSpacing: 0.5 },
+  tplCountFixed: { color: 'rgba(255,255,255,0.5)', fontSize: 13, lineHeight: 1.5, margin: '0 0 16px', padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.05)' },
   tplGuideBtn: { width: '100%', padding: '14px', borderRadius: 12, background: 'rgba(29,161,242,0.18)', color: '#1da1f2', fontSize: 15, fontWeight: 700 },
   tplPreviewWrap: { marginTop: 12, display: 'flex', justifyContent: 'center', padding: 12, borderRadius: 12, background: 'rgba(255,255,255,0.06)', backgroundImage: 'linear-gradient(45deg,rgba(255,255,255,0.08) 25%,transparent 25%),linear-gradient(-45deg,rgba(255,255,255,0.08) 25%,transparent 25%),linear-gradient(45deg,transparent 75%,rgba(255,255,255,0.08) 75%),linear-gradient(-45deg,transparent 75%,rgba(255,255,255,0.08) 75%)', backgroundSize: '16px 16px', backgroundPosition: '0 0,0 8px,8px -8px,-8px 0' },
   tplPreview: { maxWidth: 140, maxHeight: 220, borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.4)' },
