@@ -117,6 +117,13 @@ const TPL = {
     diff_count: "aantal foto's",
     meta_unknown: 'Ontwerp-parameters onbekend — controleer of de overlay nog past.',
     mark_ok: 'Toch toepassen — markeer als passend',
+    printersTitle: '🖨️ Printers',
+    printersHintOne: 'Eén printer telt voor beide producten met het gekozen papier. Voeg een tweede toe om fotostrip en pasfoto’s aan een eigen printer te koppelen.',
+    printersHintMulti: 'Koppel per product hieronder de juiste printer (met zijn papier).',
+    addPrinter: '+ Printer toevoegen',
+    removePrinter: 'Printer verwijderen',
+    printOn: 'Print op',
+    show: 'Tonen in frontend',
   },
   en: {
     section: '🎞️ Templates',
@@ -160,6 +167,13 @@ const TPL = {
     diff_count: 'number of photos',
     meta_unknown: 'Design parameters unknown — check the overlay still fits.',
     mark_ok: 'Apply anyway — mark as matching',
+    printersTitle: '🖨️ Printers',
+    printersHintOne: 'One printer counts for both products with the chosen paper. Add a second to assign photo strip and passport to their own printer.',
+    printersHintMulti: 'Assign the right printer (with its paper) to each product below.',
+    addPrinter: '+ Add printer',
+    removePrinter: 'Remove printer',
+    printOn: 'Prints on',
+    show: 'Show in frontend',
   },
 }
 
@@ -297,65 +311,170 @@ function LicenseSection({ lang }) {
 
 // ─── TEMPLATE-MANAGER ────────────────────────────────────────────────────────
 
+// Zet één papierformaat op álle templates van een product (papier = blokniveau).
+// Strip-aantal volgt het papier; pasfoto-aantal blijft binnen de capaciteit.
+function applyPaper(list, product, paper) {
+  return list.map(t => {
+    if (t.product !== product) return t
+    if (product === 'strip') return { ...t, paper, photoCount: stripPhotoCount(paper) }
+    return { ...t, paper, photoCount: Math.min(t.photoCount || passportCount(paper), passportCount(paper)) }
+  })
+}
+
+// Herstel de invarianten na een printer-wijziging: bij één printer geldt die
+// voor beide producten, en het papier per product wordt opnieuw uit de
+// gekoppelde printer afgeleid (papier = printer-eigenschap).
+function reflowPrinters(f) {
+  let { printers, stripPrinterId, passportPrinterId } = f
+  if (!printers.length) printers = [{ id: 'printer-1', name: 'Printer 1', paper: DEFAULT_PAPER }]
+  if (printers.length === 1) {
+    stripPrinterId = passportPrinterId = printers[0].id
+  } else {
+    if (!printers.some(p => p.id === stripPrinterId)) stripPrinterId = printers[0].id
+    if (!printers.some(p => p.id === passportPrinterId)) passportPrinterId = printers[0].id
+  }
+  const sp = printers.find(p => p.id === stripPrinterId) || printers[0]
+  const pp = printers.find(p => p.id === passportPrinterId) || printers[0]
+  let templates = applyPaper(f.templates, 'strip', sp.paper)
+  templates = applyPaper(templates, 'passport', pp.paper)
+  return { ...f, printers, stripPrinterId, passportPrinterId, templates }
+}
+
 function TemplateManager({ form, setForm, lang }) {
   const tpl = TPL[lang] || TPL.nl
+  const printers = form.printers || []
+  const multi = printers.length > 1
+
+  // Een printer toevoegen. De tweede koppelt zich meteen aan de pasfoto (en krijgt
+  // postcard als papier), zodat "fotostrip + pasfoto apart" direct zichtbaar is.
+  const addPrinter = () => setForm(f => {
+    const n = f.printers.length + 1
+    const np = { id: uid(), name: `Printer ${n}`, paper: n === 2 ? 'postcard' : DEFAULT_PAPER }
+    const passportPrinterId = f.printers.length === 1 ? np.id : f.passportPrinterId
+    return reflowPrinters({ ...f, printers: [...f.printers, np], passportPrinterId })
+  })
+
+  const removePrinter = (id) => setForm(f => {
+    if (f.printers.length <= 1) return f
+    return reflowPrinters({ ...f, printers: f.printers.filter(p => p.id !== id) })
+  })
+
+  const renamePrinter = (id, name) =>
+    setForm(f => ({ ...f, printers: f.printers.map(p => p.id === id ? { ...p, name } : p) }))
+
+  const setPrinterPaper = (id, paper) =>
+    setForm(f => reflowPrinters({ ...f, printers: f.printers.map(p => p.id === id ? { ...p, paper } : p) }))
+
+  // Koppel een product aan een printer (alleen zinvol bij ≥2 printers).
+  const assignPrinter = (product, printerId) => setForm(f => reflowPrinters({
+    ...f, [product === 'strip' ? 'stripPrinterId' : 'passportPrinterId']: printerId,
+  }))
+
+  // Een product tonen/verbergen in de frontend; minstens één blijft aan.
+  const setEnabled = (product, on) => setForm(f => {
+    const stripOn = product === 'strip' ? on : f.stripEnabled !== false
+    const passOn  = product === 'passport' ? on : f.passportEnabled !== false
+    if (!stripOn && !passOn) return f
+    return { ...f, [product === 'strip' ? 'stripEnabled' : 'passportEnabled']: on }
+  })
+
+  return (
+    <Section title={tpl.section}>
+      <p style={s.tplHelp}>{tpl.intro}</p>
+
+      {/* ── Printers: elk een naam + papier; één printer geldt voor beide ── */}
+      <p style={s.tplGroup}>{tpl.printersTitle}</p>
+      {printers.map((p, i) => (
+        <div key={p.id} style={s.printerRow}>
+          <input style={{ ...s.input, flex: '2 1 110px' }} type="text" value={p.name}
+            onChange={e => renamePrinter(p.id, e.target.value)} placeholder={`Printer ${i + 1}`} />
+          <select style={{ ...s.input, flex: '2 1 130px' }} value={p.paper}
+            onChange={e => setPrinterPaper(p.id, e.target.value)}>
+            {Object.values(PAPERS).map(pp => (
+              <option key={pp.id} value={pp.id}>{paperLabel(pp.id, lang)}</option>
+            ))}
+          </select>
+          {printers.length > 1 && (
+            <button style={s.printerDel} onClick={() => removePrinter(p.id)}
+              title={tpl.removePrinter} aria-label={tpl.removePrinter}>✕</button>
+          )}
+        </div>
+      ))}
+      <button style={{ ...s.smBtn, width: '100%', marginTop: 4 }} onClick={addPrinter}>{tpl.addPrinter}</button>
+      <p style={{ ...s.tplHelp, marginTop: 10 }}>{multi ? tpl.printersHintMulti : tpl.printersHintOne}</p>
+
+      <ProductBlock product="strip" form={form} setForm={setForm} lang={lang}
+        enabled={form.stripEnabled !== false}
+        onToggle={on => setEnabled('strip', on)}
+        printers={printers} multi={multi} assignedId={form.stripPrinterId}
+        onAssign={id => assignPrinter('strip', id)} />
+
+      <ProductBlock product="passport" form={form} setForm={setForm} lang={lang}
+        enabled={form.passportEnabled !== false}
+        onToggle={on => setEnabled('passport', on)}
+        printers={printers} multi={multi} assignedId={form.passportPrinterId}
+        onAssign={id => assignPrinter('passport', id)} />
+    </Section>
+  )
+}
+
+// Eén zelfstandig blok per product (Fotostrip / Pasfoto's): aan/uit-schakelaar,
+// printer-koppeling (met diens papier), eigen template-kaarten en de editor.
+function ProductBlock({ product, form, setForm, lang, enabled, onToggle, printers, multi, assignedId, onAssign }) {
+  const tpl = TPL[lang] || TPL.nl
+  const isStrip = product === 'strip'
   const fileRef = useRef(null)
   const [tplErr, setTplErr] = useState('')
-  const [sel, setSel] = useState(form.activeStripTemplateId)
   const [previewUrl, setPreviewUrl] = useState(null)
 
-  const templates = form.templates
-  const strips    = templates.filter(t => t.product === 'strip')
-  const passes    = templates.filter(t => t.product === 'passport')
-  const selected  = templates.find(t => t.id === sel) || templates[0]
+  const list = form.templates.filter(t => t.product === product)
+  const [sel, setSel] = useState(list[0]?.id)
+  useEffect(() => { if (!list.some(t => t.id === sel)) setSel(list[0]?.id) }, [list, sel])
+  const selected = list.find(t => t.id === sel) || list[0]
+
+  const activeId    = isStrip ? form.activeStripTemplateId : form.activePassportTemplateId
+  // Het papier komt van de gekoppelde printer (papier = printer-eigenschap).
+  const printer     = printers.find(p => p.id === assignedId) || printers[0]
+  const blockPaper  = printer?.paper || (isStrip ? DEFAULT_PAPER : 'postcard')
+  const capacity    = passportCount(blockPaper)
 
   const patchTpl = (id, patch) =>
     setForm(f => ({ ...f, templates: f.templates.map(t => t.id === id ? { ...t, ...patch } : t) }))
-  const setT = (patch) => patchTpl(selected.id, patch)
+  const setT = (patch) => selected && patchTpl(selected.id, patch)
 
-  const addTpl = (product) => {
-    const t = newTemplate(product)
+  // Nieuwe template volgt meteen het papier van de gekoppelde printer.
+  const addTpl = () => {
+    const base = newTemplate(product)
+    const t = isStrip
+      ? { ...base, paper: blockPaper, photoCount: stripPhotoCount(blockPaper) }
+      : { ...base, paper: blockPaper, photoCount: Math.min(base.photoCount, capacity) }
     setForm(f => ({ ...f, templates: [...f.templates, t] }))
     setSel(t.id)
     setTplErr('')
   }
 
-  const delTpl = () => {
-    const sameProduct = templates.filter(t => t.product === selected.product)
-    if (sameProduct.length <= 1) { setTplErr(tpl.delMin); return }
+  // Een template verwijderen (op id) — minstens één per product blijft over.
+  const delTplById = (id) => {
+    if (list.length <= 1) { setTplErr(tpl.delMin); return }
     setTplErr('')
+    const fallback = list.find(t => t.id !== id)
     setForm(f => {
-      const list = f.templates.filter(t => t.id !== selected.id)
-      const fallback = list.find(t => t.product === selected.product)?.id
+      const next = f.templates.filter(t => t.id !== id)
       return {
         ...f,
-        templates: list,
-        activeStripTemplateId:    f.activeStripTemplateId === selected.id ? (list.find(t=>t.product==='strip')?.id) : f.activeStripTemplateId,
-        activePassportTemplateId: f.activePassportTemplateId === selected.id ? (list.find(t=>t.product==='passport')?.id) : f.activePassportTemplateId,
+        templates: next,
+        activeStripTemplateId:    f.activeStripTemplateId === id ? next.find(t=>t.product==='strip')?.id : f.activeStripTemplateId,
+        activePassportTemplateId: f.activePassportTemplateId === id ? next.find(t=>t.product==='passport')?.id : f.activePassportTemplateId,
       }
     })
-    const fallback = templates.find(t => t.product === selected.product && t.id !== selected.id)
-    setSel(fallback?.id || templates[0].id)
+    if (sel === id) setSel(fallback?.id)
   }
+  const delTpl = () => selected && delTplById(selected.id)
 
-  // Markeer een template als de actieve voor zijn product (= wat de klant krijgt).
+  // Markeer een template als de actieve voor dit product (= wat de klant krijgt).
   const setActive = (item) => setForm(f => (
-    item.product === 'strip'
-      ? { ...f, activeStripTemplateId: item.id }
-      : { ...f, activePassportTemplateId: item.id }
+    isStrip ? { ...f, activeStripTemplateId: item.id } : { ...f, activePassportTemplateId: item.id }
   ))
-  const activeIdFor = (product) =>
-    product === 'strip' ? form.activeStripTemplateId : form.activePassportTemplateId
-
-  const isStrip = selected.product === 'strip'
-  const capacity = passportCount(selected.paper)
-
-  // Bij papierwissel het aantal corrigeren. Strip: aantal ligt vast per papier.
-  // Pasfoto: binnen de fysieke capaciteit van het vel houden.
-  const changePaper = (paper) => {
-    if (isStrip) setT({ paper, photoCount: stripPhotoCount(paper) })
-    else setT({ paper, photoCount: Math.min(selected.photoCount, passportCount(paper)) })
-  }
 
   // Overlay-upload (alleen strip): legt vast waarvoor de overlay is gemaakt.
   const onFile = (e) => {
@@ -388,9 +507,9 @@ function TemplateManager({ form, setForm, lang }) {
   }
 
   // Waarborg: past de overlay nog bij aantal + footer van deze template?
-  const curFooter = !!((selected.footer || '').trim())
+  const curFooter = !!((selected?.footer || '').trim())
   const diffs = []
-  if (isStrip && selected.overlay && selected.designedFor) {
+  if (isStrip && selected?.overlay && selected.designedFor) {
     if (selected.designedFor.hasFooter !== curFooter) diffs.push(curFooter ? tpl.diff_footer_on : tpl.diff_footer_off)
     if (selected.designedFor.photoCount !== selected.photoCount) diffs.push(`${tpl.diff_count}: ${selected.designedFor.photoCount} → ${selected.photoCount}`)
   }
@@ -399,7 +518,7 @@ function TemplateManager({ form, setForm, lang }) {
   // Live preview (alleen strip) — het VOLLEDIGE printvel (één grid-ontwerp),
   // exact wat de klant en de printer krijgen, op de juiste papierverhouding.
   useEffect(() => {
-    if (!isStrip) { setPreviewUrl(null); return }
+    if (!isStrip || !selected) { setPreviewUrl(null); return }
     let cancelled = false
     const photos = Array.from({ length: selected.photoCount }, (_, i) => dummyPhoto(i, selected.photoCount))
     const id = setTimeout(() => {
@@ -411,12 +530,12 @@ function TemplateManager({ form, setForm, lang }) {
       }).then(url => { if (!cancelled) setPreviewUrl(url) })
     }, 200)
     return () => { cancelled = true; clearTimeout(id) }
-  }, [isStrip, selected.paper, selected.photoCount, selected.footer, selected.bg, selected.overlay, selected.overlayOpacity])
+  }, [isStrip, selected?.paper, selected?.photoCount, selected?.footer, selected?.bg, selected?.overlay, selected?.overlayOpacity])
 
   // Eén kaartje per template: tik = bewerken, ✓-knop = actief maken.
   const renderCard = (x) => {
-    const active  = x.id === activeIdFor(x.product)
-    const editing = x.id === selected.id
+    const active  = x.id === activeId
+    const editing = x.id === selected?.id
     return (
       <div key={x.id}
         style={{ ...s.tplRow, ...(editing ? s.tplRowEditing : {}) }}
@@ -432,145 +551,154 @@ function TemplateManager({ form, setForm, lang }) {
           <p style={s.tplRowSub}>{paperLabel(x.paper, lang)} · {x.photoCount} {tpl.photos}</p>
         </div>
         {active && <span style={s.tplActivePill}>{tpl.activePill}</span>}
+        {list.length > 1 && (
+          <button style={s.tplCardDel} onClick={e => { e.stopPropagation(); delTplById(x.id) }}
+            title={tpl.del} aria-label={tpl.del}>✕</button>
+        )}
       </div>
     )
   }
 
   return (
-    <Section title={tpl.section}>
-      <p style={s.tplHelp}>{tpl.intro}</p>
+    <div style={s.block}>
+      {/* Kop: titel + aan/uit-schakelaar voor de frontend */}
+      <div style={s.blockHeader}>
+        <span style={s.blockTitle}>{isStrip ? tpl.groupStrip : tpl.groupPassport}</span>
+        <label style={s.switchLabel}>
+          <span style={s.switchText}>{tpl.show}</span>
+          <input type="checkbox" checked={enabled} onChange={e => onToggle(e.target.checked)} />
+        </label>
+      </div>
 
-      {/* ── Fotostrip-templates ── */}
-      <p style={s.tplGroup}>{tpl.groupStrip}</p>
-      {strips.map(renderCard)}
-      <button style={{ ...s.smBtn, width: '100%', marginTop: 4, marginBottom: 18 }} onClick={() => addTpl('strip')}>
-        {tpl.newStrip}
-      </button>
-
-      {/* ── Pasfoto-templates ── */}
-      <p style={s.tplGroup}>{tpl.groupPassport}</p>
-      {passes.map(renderCard)}
-      <button style={{ ...s.smBtn, width: '100%', marginTop: 4, marginBottom: 18 }} onClick={() => addTpl('passport')}>
-        {tpl.newPassport}
-      </button>
-
-      {/* ── Editor voor het aangetikte template ── */}
-      <div style={s.printerCard}>
-        <p style={{ ...s.label, marginBottom: 10, fontWeight: 700 }}>
-          {tpl.editingHeading}: {selected.product === 'strip' ? tpl.pStrip : tpl.pPassport}
-        </p>
-
-        <Field label={tpl.name}>
-          <input style={s.input} type="text" value={selected.name}
-            onChange={e => setT({ name: e.target.value })} />
-        </Field>
-
-        <Field label={tpl.paper}>
-          <select style={s.input} value={selected.paper} onChange={e => changePaper(e.target.value)}>
-            {Object.values(PAPERS).map(pp => (
-              <option key={pp.id} value={pp.id}>{paperLabel(pp.id, lang)}</option>
+      {/* Printer-koppeling: bij één printer een vaste regel, anders een keuze.
+          Het papier komt altijd van de gekoppelde printer. */}
+      {multi ? (
+        <Field label={tpl.printOn}>
+          <select style={s.input} value={printer?.id} onChange={e => onAssign(e.target.value)}>
+            {printers.map(p => (
+              <option key={p.id} value={p.id}>{p.name} · {paperLabel(p.paper, lang)}</option>
             ))}
           </select>
         </Field>
+      ) : (
+        <p style={s.tplCountFixed}>{tpl.printOn}: {printer?.name} · {paperLabel(blockPaper, lang)}</p>
+      )}
 
-        {isStrip ? (
-          // Strip: het aantal foto's ligt vast per papierformaat — geen los veld.
-          <p style={s.tplCountFixed}>
-            {tpl.countStripFixed.replace('{n}', stripPhotoCount(selected.paper))}
-          </p>
-        ) : (
-          <Field label={tpl.countPassport}>
-            <input style={s.input} type="number" min="1" max={capacity}
-              value={selected.photoCount}
-              onChange={e => {
-                const n = Math.max(1, Math.min(capacity, parseInt(e.target.value) || 1))
-                setT({ photoCount: n })
-              }} />
-            <p style={{ ...s.hint, marginTop: 4 }}>
-              {tpl.countPassportHint.replace('{n}', capacity)}
-            </p>
+      {/* Template-kaarten van dit product */}
+      {list.map(renderCard)}
+      <button style={{ ...s.smBtn, width: '100%', marginTop: 4, marginBottom: 12 }} onClick={addTpl}>
+        {isStrip ? tpl.newStrip : tpl.newPassport}
+      </button>
+
+      {/* Editor voor het aangetikte template */}
+      {selected && (
+        <div style={s.printerCard}>
+          <p style={{ ...s.label, marginBottom: 10, fontWeight: 700 }}>{tpl.editingHeading}</p>
+
+          <Field label={tpl.name}>
+            <input style={s.input} type="text" value={selected.name}
+              onChange={e => setT({ name: e.target.value })} />
           </Field>
-        )}
 
-        {isStrip && (
-          <>
-            <Field label={tpl.footer}>
-              <input style={s.input} type="text" value={selected.footer || ''}
-                onChange={e => setT({ footer: e.target.value })} />
-            </Field>
-            <Field label={tpl.bg}>
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                <input type="color" value={selected.bg} onChange={e => setT({ bg: e.target.value })} style={s.colorPicker} />
-                <input style={{ ...s.input, flex: 1 }} type="text" value={selected.bg} onChange={e => setT({ bg: e.target.value })} />
-              </div>
-            </Field>
-
-            <Field label={tpl.overlay}>
-              <p style={s.tplHelp}>{tpl.overlayHelp}</p>
-
-              <button style={s.tplGuideBtn} onClick={downloadGuide}>{tpl.guide}</button>
-              {officialTemplateUrl(selected.paper) && (
-                <a style={{ ...s.tplGuideBtn, display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: 8, background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.85)' }}
-                  href={officialTemplateUrl(selected.paper)} target="_blank" rel="noopener noreferrer">
-                  {tpl.official}
-                </a>
-              )}
-
-              <div style={s.tplPreviewWrap}>
-                {previewUrl ? <img src={previewUrl} alt="preview" style={s.tplPreview} /> : <p style={s.hint}>…</p>}
-              </div>
-              <p style={{ ...s.hint, marginTop: 6, textAlign: 'center' }}>
-                {selected.overlay ? tpl.preview_with : tpl.preview_none}
+          {isStrip ? (
+            // Strip: het aantal foto's ligt vast per papierformaat — geen los veld.
+            <p style={s.tplCountFixed}>
+              {tpl.countStripFixed.replace('{n}', stripPhotoCount(blockPaper))}
+            </p>
+          ) : (
+            <Field label={tpl.countPassport}>
+              <input style={s.input} type="number" min="1" max={capacity}
+                value={selected.photoCount}
+                onChange={e => {
+                  const n = Math.max(1, Math.min(capacity, parseInt(e.target.value) || 1))
+                  setT({ photoCount: n })
+                }} />
+              <p style={{ ...s.hint, marginTop: 4 }}>
+                {tpl.countPassportHint.replace('{n}', capacity)}
               </p>
-
-              {tplErr && <p style={s.errMsg}>{tplErr}</p>}
-
-              <input ref={fileRef} type="file" accept="image/png" onChange={onFile} style={{ display: 'none' }} />
-              <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-                <button style={{ ...s.smBtn, flex: 1 }} onClick={() => fileRef.current && fileRef.current.click()}>
-                  {selected.overlay ? tpl.replace : tpl.upload}
-                </button>
-                {selected.overlay && (
-                  <button style={{ ...s.smBtn, background: 'rgba(233,69,96,0.15)', color: '#e94560' }} onClick={removeOverlay}>
-                    {tpl.remove}
-                  </button>
-                )}
-              </div>
-
-              {/* Waarborg */}
-              {selected.overlay && (
-                selected.designedFor
-                  ? (diffs.length === 0
-                      ? <p style={{ ...s.hint, color: '#27ae60', marginTop: 12 }}>{tpl.match_ok}</p>
-                      : (
-                        <div style={{ marginTop: 12 }}>
-                          <p style={{ ...s.errMsg, marginBottom: 6 }}>{tpl.match_bad}</p>
-                          <ul style={{ margin: '0 0 10px 18px', color: '#e94560', fontSize: 13, lineHeight: 1.5 }}>
-                            {diffs.map((d, i) => <li key={i}>{d}</li>)}
-                          </ul>
-                          <button style={s.smBtn} onClick={markOk}>{tpl.mark_ok}</button>
-                        </div>
-                      ))
-                  : <p style={{ ...s.hint, marginTop: 12 }}>{tpl.meta_unknown}</p>
-              )}
-
-              {selected.overlay && (
-                <div style={{ marginTop: 16 }}>
-                  <p style={s.label}>{tpl.opacity} — {Math.round((selected.overlayOpacity ?? 1) * 100)}%</p>
-                  <input type="range" min="0" max="100" style={{ width: '100%' }}
-                    value={Math.round((selected.overlayOpacity ?? 1) * 100)}
-                    onChange={e => setT({ overlayOpacity: Number(e.target.value) / 100 })} />
-                </div>
-              )}
             </Field>
-          </>
-        )}
+          )}
 
-        <button style={{ ...s.smBtn, background: 'rgba(233,69,96,0.15)', color: '#e94560', marginTop: 4 }} onClick={delTpl}>
-          {tpl.del}
-        </button>
-      </div>
-    </Section>
+          {isStrip && (
+            <>
+              <Field label={tpl.footer}>
+                <input style={s.input} type="text" value={selected.footer || ''}
+                  onChange={e => setT({ footer: e.target.value })} />
+              </Field>
+              <Field label={tpl.bg}>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <input type="color" value={selected.bg} onChange={e => setT({ bg: e.target.value })} style={s.colorPicker} />
+                  <input style={{ ...s.input, flex: 1 }} type="text" value={selected.bg} onChange={e => setT({ bg: e.target.value })} />
+                </div>
+              </Field>
+
+              <Field label={tpl.overlay}>
+                <p style={s.tplHelp}>{tpl.overlayHelp}</p>
+
+                <button style={s.tplGuideBtn} onClick={downloadGuide}>{tpl.guide}</button>
+                {officialTemplateUrl(blockPaper) && (
+                  <a style={{ ...s.tplGuideBtn, display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: 8, background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.85)' }}
+                    href={officialTemplateUrl(blockPaper)} target="_blank" rel="noopener noreferrer">
+                    {tpl.official}
+                  </a>
+                )}
+
+                <div style={s.tplPreviewWrap}>
+                  {previewUrl ? <img src={previewUrl} alt="preview" style={s.tplPreview} /> : <p style={s.hint}>…</p>}
+                </div>
+                <p style={{ ...s.hint, marginTop: 6, textAlign: 'center' }}>
+                  {selected.overlay ? tpl.preview_with : tpl.preview_none}
+                </p>
+
+                {tplErr && <p style={s.errMsg}>{tplErr}</p>}
+
+                <input ref={fileRef} type="file" accept="image/png" onChange={onFile} style={{ display: 'none' }} />
+                <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+                  <button style={{ ...s.smBtn, flex: 1 }} onClick={() => fileRef.current && fileRef.current.click()}>
+                    {selected.overlay ? tpl.replace : tpl.upload}
+                  </button>
+                  {selected.overlay && (
+                    <button style={{ ...s.smBtn, background: 'rgba(233,69,96,0.15)', color: '#e94560' }} onClick={removeOverlay}>
+                      {tpl.remove}
+                    </button>
+                  )}
+                </div>
+
+                {/* Waarborg */}
+                {selected.overlay && (
+                  selected.designedFor
+                    ? (diffs.length === 0
+                        ? <p style={{ ...s.hint, color: '#27ae60', marginTop: 12 }}>{tpl.match_ok}</p>
+                        : (
+                          <div style={{ marginTop: 12 }}>
+                            <p style={{ ...s.errMsg, marginBottom: 6 }}>{tpl.match_bad}</p>
+                            <ul style={{ margin: '0 0 10px 18px', color: '#e94560', fontSize: 13, lineHeight: 1.5 }}>
+                              {diffs.map((d, i) => <li key={i}>{d}</li>)}
+                            </ul>
+                            <button style={s.smBtn} onClick={markOk}>{tpl.mark_ok}</button>
+                          </div>
+                        ))
+                    : <p style={{ ...s.hint, marginTop: 12 }}>{tpl.meta_unknown}</p>
+                )}
+
+                {selected.overlay && (
+                  <div style={{ marginTop: 16 }}>
+                    <p style={s.label}>{tpl.opacity} — {Math.round((selected.overlayOpacity ?? 1) * 100)}%</p>
+                    <input type="range" min="0" max="100" style={{ width: '100%' }}
+                      value={Math.round((selected.overlayOpacity ?? 1) * 100)}
+                      onChange={e => setT({ overlayOpacity: Number(e.target.value) / 100 })} />
+                  </div>
+                )}
+              </Field>
+            </>
+          )}
+
+          <button style={{ ...s.smBtn, background: 'rgba(233,69,96,0.15)', color: '#e94560', marginTop: 4 }} onClick={delTpl}>
+            {tpl.del}
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -603,6 +731,11 @@ export default function AdminScreen({ onClose }) {
       templates:         JSON.parse(JSON.stringify(c.templates)),
       activeStripTemplateId:    c.activeStripTemplateId,
       activePassportTemplateId: c.activePassportTemplateId,
+      printers:          JSON.parse(JSON.stringify(c.printers)),
+      stripPrinterId:    c.stripPrinterId,
+      passportPrinterId: c.passportPrinterId,
+      stripEnabled:      c.stripEnabled,
+      passportEnabled:   c.passportEnabled,
       _passwordHash:     s.passwordHash,
     }
   })
@@ -619,14 +752,34 @@ export default function AdminScreen({ onClose }) {
       passwordHash = await hashPassword(newPw)
     }
 
+    // Printers opschonen + de één-printer-regel: bij één printer geldt die voor
+    // beide producten. Het papier per product komt van de gekoppelde printer.
+    let printers = (form.printers || []).map((p, i) => ({
+      id: p.id || `printer-${i + 1}`,
+      name: (p.name || '').trim() || `Printer ${i + 1}`,
+      paper: PAPERS[p.paper] ? p.paper : DEFAULT_PAPER,
+    }))
+    if (printers.length === 0) printers = [{ id: 'printer-1', name: 'Printer 1', paper: DEFAULT_PAPER }]
+    let stripPrinterId = form.stripPrinterId
+    let passportPrinterId = form.passportPrinterId
+    if (printers.length === 1) {
+      stripPrinterId = passportPrinterId = printers[0].id
+    } else {
+      if (!printers.some(p => p.id === stripPrinterId)) stripPrinterId = printers[0].id
+      if (!printers.some(p => p.id === passportPrinterId)) passportPrinterId = printers[0].id
+    }
+    const stripPaper = printers.find(p => p.id === stripPrinterId).paper
+    const passPaper  = printers.find(p => p.id === passportPrinterId).paper
+
     // Templates opschonen/valideren.
     const templates = form.templates.map(x => {
-      const paper = PAPERS[x.paper] ? x.paper : DEFAULT_PAPER
       const name = (x.name || '').trim() || (x.product === 'passport' ? 'Pasfoto' : 'Strip')
       if (x.product === 'passport') {
+        const paper = passPaper
         const cap = passportCount(paper)
         return { id: x.id, name, product: 'passport', paper, photoCount: Math.max(1, Math.min(cap, parseInt(x.photoCount) || cap)) }
       }
+      const paper = stripPaper
       return {
         id: x.id, name, product: 'strip', paper,
         // Strip-aantal ligt vast per papierformaat (één bron: papers.js).
@@ -649,6 +802,11 @@ export default function AdminScreen({ onClose }) {
       templates,
       activeStripTemplateId:    form.activeStripTemplateId,
       activePassportTemplateId: form.activePassportTemplateId,
+      printers,
+      stripPrinterId,
+      passportPrinterId,
+      stripEnabled:      form.stripEnabled !== false,
+      passportEnabled:   form.passportEnabled !== false,
       passwordHash,
     })
     if (!ok) { setSaveErr(t('adm.save_failed', lang)); return }
@@ -802,6 +960,14 @@ const s = {
   printerCard: { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, padding: 14, marginBottom: 12 },
   tplHelp: { color: 'rgba(255,255,255,0.5)', fontSize: 13, lineHeight: 1.5, margin: '0 0 12px' },
   tplGroup: { color: 'rgba(255,255,255,0.85)', fontSize: 15, fontWeight: 700, margin: '4px 0 8px' },
+  printerRow: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 },
+  printerDel: { flexShrink: 0, width: 40, height: 48, borderRadius: 12, background: 'rgba(233,69,96,0.15)', color: '#e94560', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 },
+  tplCardDel: { flexShrink: 0, width: 28, height: 28, borderRadius: '50%', background: 'rgba(233,69,96,0.15)', color: '#e94560', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, marginLeft: 4 },
+  block: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: 16, marginBottom: 16 },
+  blockHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  blockTitle: { color: '#fff', fontSize: 18, fontWeight: 700 },
+  switchLabel: { display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' },
+  switchText: { color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 600 },
   tplRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12, marginBottom: 8, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' },
   tplRowEditing: { border: '1px solid rgba(29,161,242,0.7)', background: 'rgba(29,161,242,0.1)' },
   tplRowName: { color: '#fff', fontSize: 16, fontWeight: 600, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },

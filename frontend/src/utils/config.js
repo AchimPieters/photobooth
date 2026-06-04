@@ -64,6 +64,12 @@ export function getConfig() {
     stripFooter:       strip.footer || '',
     stripBg:           strip.bg || '#000000',
     passportPhotoCount: pass.photoCount,
+    // Printers + koppeling per product + welke producten zichtbaar zijn.
+    printers:           s.printers,
+    stripPrinterId:     s.stripPrinterId,
+    passportPrinterId:  s.passportPrinterId,
+    stripEnabled:       s.stripEnabled !== false,
+    passportEnabled:    s.passportEnabled !== false,
     // Voor de admin.
     templates:                s.templates,
     activeStripTemplateId:    s.activeStripTemplateId,

@@ -79,21 +79,26 @@ export default function WelcomeScreen({ onStartStrip, onStartPassport, onAdmin, 
           (groene) licentienaam meer op het startscherm. */}
       {!licensed && <p style={s.demoBadge}>{t('demo.badge', lang)}</p>}
 
-      {/* Keuze-knoppen */}
+      {/* Keuze-knoppen — een product dat in de admin is uitgeschakeld, verschijnt
+          hier niet. De admin borgt dat er altijd minstens één aan staat. */}
       <div style={s.modes}>
-        <button style={s.modeCard} onClick={onStartStrip}>
-          <span style={s.modeIcon}>📸</span>
-          <span style={s.modeTitle}>{t('strip.title', lang)}</span>
-          <span style={s.modeSub}>{t('strip.sub', lang, { n: config.totalPhotos })}</span>
-          <span style={s.modePrice}>€{config.price.toFixed(2)}</span>
-        </button>
+        {config.stripEnabled && (
+          <button style={s.modeCard} onClick={onStartStrip}>
+            <span style={s.modeIcon}>📸</span>
+            <span style={s.modeTitle}>{t('strip.title', lang)}</span>
+            <span style={s.modeSub}>{t('strip.sub', lang, { n: config.totalPhotos })}</span>
+            <span style={s.modePrice}>€{config.price.toFixed(2)}</span>
+          </button>
+        )}
 
-        <button style={{ ...s.modeCard, ...s.modeCardPassport }} onClick={onStartPassport}>
-          <span style={s.modeIcon}>🪪</span>
-          <span style={s.modeTitle}>{t('passport.title', lang)}</span>
-          <span style={s.modeSub}>{t('passport.sub', lang)}</span>
-          <span style={s.modePrice}>€{config.passportPrice.toFixed(2)} — {passportN} {lang === 'en' ? 'photos' : "foto's"}</span>
-        </button>
+        {config.passportEnabled && (
+          <button style={{ ...s.modeCard, ...s.modeCardPassport }} onClick={onStartPassport}>
+            <span style={s.modeIcon}>🪪</span>
+            <span style={s.modeTitle}>{t('passport.title', lang)}</span>
+            <span style={s.modeSub}>{t('passport.sub', lang)}</span>
+            <span style={s.modePrice}>€{config.passportPrice.toFixed(2)} — {passportN} {lang === 'en' ? 'photos' : "foto's"}</span>
+          </button>
+        )}
       </div>
     </div>
   )
