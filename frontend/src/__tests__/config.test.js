@@ -26,7 +26,7 @@ import config, {
   getConfig, getActiveTemplate, paperForProduct,
   stripOverlayActive, stripTemplateStatus,
 } from '../utils/config'
-import { saveSettings, DEFAULT_STRIP_TEMPLATE, DEFAULT_PASSPORT_TEMPLATE } from '../utils/settings'
+import { saveSettings, DEFAULT_STRIP_TEMPLATE } from '../utils/settings'
 
 describe('AppConfig', () => {
   afterEach(() => localStorage.clear())
@@ -38,18 +38,39 @@ describe('AppConfig', () => {
   it('baseUrl is automatisch afgeleid (url)', () => expect(config.baseUrl).toMatch(/^https?:\/\//))
   it('digitale kopie staat standaard uit', () => expect(getConfig().photoUploadUrl).toBe(''))
 
+  it('default: beide producten zichtbaar, één printer', () => {
+    const c = getConfig()
+    expect(c.stripEnabled).toBe(true)
+    expect(c.passportEnabled).toBe(true)
+    expect(c.printers).toHaveLength(1)
+    expect(c.stripPrinterId).toBe(c.passportPrinterId)
+  })
+
+  it('een product uitschakelen wordt doorgegeven aan de frontend', () => {
+    saveSettings({ passportEnabled: false })
+    expect(getConfig().passportEnabled).toBe(false)
+    expect(getConfig().stripEnabled).toBe(true)
+  })
+
   it('default: totalPhotos = aantal van de actieve strip-template (4)', () => {
     expect(getConfig().totalPhotos).toBe(DEFAULT_STRIP_TEMPLATE.photoCount)
     expect(getConfig().totalPhotos).toBe(4)
   })
 
   it('papier komt uit de actieve template per product', () => {
-    expect(paperForProduct('strip')).toBe(DEFAULT_STRIP_TEMPLATE.paper)       // L
-    expect(paperForProduct('passport')).toBe(DEFAULT_PASSPORT_TEMPLATE.paper) // postcard
+    expect(paperForProduct('strip')).toBe(DEFAULT_STRIP_TEMPLATE.paper)    // L
+    // Standaard één printer: de pasfoto deelt het papier van de fotostrip.
+    expect(paperForProduct('passport')).toBe(DEFAULT_STRIP_TEMPLATE.paper) // L
   })
 
-  it('actieve template wisselen verandert totalPhotos + papier', () => {
+  it('papier komt van de gekoppelde printer per product', () => {
     saveSettings({
+      printers: [
+        { id: 'pr1', name: 'Strip', paper: 'card' },
+        { id: 'pr2', name: 'Pasfoto', paper: 'postcard' },
+      ],
+      stripPrinterId: 'pr1',
+      passportPrinterId: 'pr2',
       templates: [
         { id: 's1', name: 'A', product: 'strip', paper: 'card', photoCount: 3, footer: '', bg: '#000', overlay: null, overlayOpacity: 1, designedFor: null },
         { id: 'p1', name: 'P', product: 'passport', paper: 'postcard', photoCount: 6 },
@@ -59,6 +80,7 @@ describe('AppConfig', () => {
     })
     expect(getConfig().totalPhotos).toBe(3)
     expect(paperForProduct('strip')).toBe('card')
+    expect(paperForProduct('passport')).toBe('postcard')
     expect(getConfig().passportPhotoCount).toBe(6)
   })
 })
